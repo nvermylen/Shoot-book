@@ -37,7 +37,13 @@ export default function SignupPage() {
     }
 
     const supabase = createClient();
-    await supabase.auth.signInWithPassword({ email, password });
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInError) {
+      setError("Account created — check your email to confirm, then sign in.");
+      setLoading(false);
+      return;
+    }
 
     router.push("/");
     router.refresh();
