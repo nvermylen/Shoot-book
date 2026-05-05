@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   const { email, password, studioName, timezone } = await request.json();
 
-  const supabase = await createClient();
-  const { data, error: signUpError } = await supabase.auth.signUp({
+  // admin: signup is a public operation but we need the admin client
+  // to also insert the photographer row in the same request
+  const admin = createAdminClient();
+
+  const { data, error: signUpError } = await admin.auth.admin.createUser({
     email,
     password,
-    options: { data: { studio_name: studioName } },
+    email_confirm: true,
+    user_metadata: { studio_name: studioName },
   });
 
   if (signUpError) {
@@ -17,8 +20,6 @@ export async function POST(request: Request) {
   }
 
   if (data.user) {
-    // admin: RLS requires active session; session isn't established until email confirmed or auto-confirm
-    const admin = createAdminClient();
     const { error: profileError } = await admin.from("photographer").insert({
       id: data.user.id,
       business_name: studioName,
