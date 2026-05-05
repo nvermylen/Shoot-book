@@ -18,35 +18,26 @@ export default function SignupPage() {
     setLoading(true);
     setError(null);
 
-    const supabase = createClient();
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { studio_name: studioName },
-      },
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        studioName,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      }),
     });
 
-    if (signUpError) {
-      setError(signUpError.message);
+    const result = await res.json();
+    if (!res.ok) {
+      setError(result.error);
       setLoading(false);
       return;
     }
 
-    if (data.user) {
-      const { error: profileError } = await supabase.from("photographer").insert({
-        id: data.user.id,
-        business_name: studioName,
-        display_name: studioName,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      });
-
-      if (profileError) {
-        setError(profileError.message);
-        setLoading(false);
-        return;
-      }
-    }
+    const supabase = createClient();
+    await supabase.auth.signInWithPassword({ email, password });
 
     router.push("/");
     router.refresh();
