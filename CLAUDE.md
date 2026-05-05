@@ -14,9 +14,9 @@
 | **Project** | Lens |
 | **One-liner** | AI-native operating system for independent photographers — the central hub for the photography business. |
 | **Thesis** | Replace vertical photo SaaS (HoneyBook, Pixieset, Session). Integrate with horizontal infrastructure (Gmail, QuickBooks, Stripe, Calendar). |
-| **Repo** | [GITHUB_REPO_URL] |
-| **Deployment** | [VERCEL_PROJECT_URL] |
-| **Supabase** | [SUPABASE_PROJECT_URL] |
+| **Repo** | https://github.com/nvermylen/Shoot-book |
+| **Deployment** | https://shoot-book.vercel.app |
+| **Supabase** | https://vvcuennzifsovbbylolx.supabase.co |
 | **Linear** | [LINEAR_PROJECT_URL] |
 | **Ticket prefix** | LENS |
 | **Owner** | Nate Vermylen |
