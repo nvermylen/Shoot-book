@@ -200,7 +200,7 @@
 | Abbr | Full | Context |
 |------|------|---------|
 | PII | Personally Identifiable Information | `SECURITY.md` |
-| RLS | Row-Level Security | Supabase / `personas/PERSONA_ARCH.md` |
+| RLS | Row-Level Security | Supabase / `docs/personas/PERSONA_ARCH.md` |
 | ZDR | Zero Data Retention | LLM gateway logging policy |
 | ERP | Enterprise Resource Planning | The Lens canonical data layer |
 | AC | Acceptance Criteria | Feature Specs |

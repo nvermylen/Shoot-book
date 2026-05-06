@@ -24,7 +24,7 @@ Three things that will trip you up if you treat this like a generic CRUD app:
 ### 1. Lens is an agent-on-ERP system, not "AI sprinkled on a CRUD app"
 Lens has three layers — Integration / Agent / ERP — with strict rules about how they interact. The ERP layer is the source of truth. The agent layer is the only path to writes that should go through an agent. The integration layer holds derived state, never canonical state.
 
-**Read first:** `AGENT_ARCHITECTURE.md`. Everything else builds on it.
+**Read first:** `docs/architecture/AGENT_ARCHITECTURE.md`. Everything else builds on it.
 
 ### 2. All LLM calls go through `src/lib/ai/gateway.ts`
 There is one file allowed to import the LLM SDK. Every agent calls the gateway. The gateway handles retries, prompt versioning, eval mode, structured logging (token counts only — ZDR posture), and tool routing.
@@ -43,9 +43,9 @@ In this order:
 | # | File | Why |
 |---|------|-----|
 | 1 | `CLAUDE.md` | Current build state — last migration, last ticket, active branch. Always read first. |
-| 2 | `AGENT_ARCHITECTURE.md` | The system's spine. Three layers, six agents, gateway pattern, coordination rules. |
-| 3 | `ERP_DATA_MODEL.md` | Canonical entities and relationships. Schema decisions reference this. |
-| 4 | `ANTI_PATTERNS.md` | The mistakes this codebase is prone to. Reading this prevents most rework. |
+| 2 | `docs/architecture/AGENT_ARCHITECTURE.md` | The system's spine. Three layers, six agents, gateway pattern, coordination rules. |
+| 3 | `docs/architecture/ERP_DATA_MODEL.md` | Canonical entities and relationships. Schema decisions reference this. |
+| 4 | `docs/architecture/ANTI_PATTERNS.md` | The mistakes this codebase is prone to. Reading this prevents most rework. |
 | 5 | The current Feature Spec in `features/` | What you're building this session. |
 
 ---
@@ -57,10 +57,10 @@ Every sprint follows this pipeline. You'll typically be handed a Feature Spec.
 ```
 1. Read CLAUDE.md             → current build state (migration #, ticket #, branch)
 2. Read the Feature Spec      → what's being built
-3. Read AGENT_ARCHITECTURE    → if touching agents
-4. Read ERP_DATA_MODEL        → if touching schema
-5. Read INTEGRATION_REGISTRY  → if touching external systems
-6. Read ANTI_PATTERNS         → before writing code
+3. Read docs/architecture/AGENT_ARCHITECTURE    → if touching agents
+4. Read docs/architecture/ERP_DATA_MODEL        → if touching schema
+5. Read docs/architecture/INTEGRATION_REGISTRY  → if touching external systems
+6. Read docs/architecture/ANTI_PATTERNS         → before writing code
 7. Read relevant persona      → ARCH for design, DEV for implementation
 8. Execute the CC Prompt      → work through PRs in dependency order
 9. Generate migrations        → SQL files only, never run them
@@ -78,24 +78,24 @@ You will not apply migrations, merge PRs, or deploy. Those are manual human step
 lens/
 ├── CLAUDE.md                    ← START HERE
 ├── ONBOARDING.md                ← (this file)
-├── ANTI_PATTERNS.md             ← never-do-this list
-├── DECISIONS_LOG.md             ← why key decisions were made
-├── DOMAIN_GLOSSARY.md           ← precise terminology
-├── SECURITY.md                  ← Tier 1/2/3/4 data classification
-├── TESTING_STRATEGY.md          ← test pyramid, conventions
-├── DESIGN_SYSTEM.md             ← tokens, components
-│
-├── AGENT_ARCHITECTURE.md        ← keystone — agents, gateway, coordination
-├── ERP_DATA_MODEL.md            ← canonical entities + relationships
-├── INTEGRATION_REGISTRY.md      ← Gmail, Calendar, Stripe, QuickBooks, Storage
-│
-├── personas/
-│   ├── PERSONA_PM.md            ← product thinking, scope rules
-│   ├── PERSONA_ARCH.md          ← schema, API, layering standards
-│   ├── PERSONA_DEV.md           ← file structure, TS, naming
-│   ├── PERSONA_QA.md            ← AC writing, eval design
-│   ├── PERSONA_UX.md            ← state coverage, interaction patterns
-│   └── persona-end-user.md      ← Morgan (design partner #1)
+├── docs/
+│   ├── architecture/
+│   │   ├── AGENT_ARCHITECTURE.md    ← keystone — agents, gateway, coordination
+│   │   ├── ERP_DATA_MODEL.md        ← canonical entities + relationships
+│   │   ├── INTEGRATION_REGISTRY.md  ← Gmail, Calendar, Stripe, QuickBooks, Storage
+│   │   ├── ANTI_PATTERNS.md         ← never-do-this list
+│   │   ├── DECISIONS_LOG.md         ← why key decisions were made
+│   │   ├── DOMAIN_GLOSSARY.md       ← precise terminology
+│   │   ├── DESIGN_SYSTEM.md         ← tokens, components
+│   │   ├── SECURITY.md              ← Tier 1/2/3/4 data classification
+│   │   └── TESTING_STRATEGY.md      ← test pyramid, conventions
+│   └── personas/
+│       ├── PERSONA_PM.md            ← product thinking, scope rules
+│       ├── PERSONA_ARCH.md          ← schema, API, layering standards
+│       ├── PERSONA_DEV.md           ← file structure, TS, naming
+│       ├── PERSONA_QA.md            ← AC writing, eval design
+│       ├── PERSONA_UX.md            ← state coverage, interaction patterns
+│       └── persona-end-user.md      ← Morgan (design partner #1)
 │
 ├── phases/
 │   └── Phase[N]_Implementation_Plan.md
@@ -161,7 +161,7 @@ lens/
 
 **Ambiguous spec** → State the ambiguity and the two most likely interpretations. Ask. Don't guess on foundational decisions.
 
-**Conflicting patterns in existing code** → Follow the more recent pattern. Check `DECISIONS_LOG.md` for context. Flag the inconsistency in your PR description.
+**Conflicting patterns in existing code** → Follow the more recent pattern. Check `docs/architecture/DECISIONS_LOG.md` for context. Flag the inconsistency in your PR description.
 
 **TypeScript error you can't resolve** → Show the error, the relevant code, what you've tried. Don't `as any` to silence it.
 
@@ -169,9 +169,9 @@ lens/
 
 **Performance concern** → Flag as `// TODO: LENS-NNN — perf` and continue. Don't over-optimize unless the spec explicitly requires.
 
-**Security uncertainty** → Read `SECURITY.md`. If still uncertain, stop and ask. Never guess on security.
+**Security uncertainty** → Read `docs/architecture/SECURITY.md`. If still uncertain, stop and ask. Never guess on security.
 
-**Agent boundary unclear** → Read `AGENT_ARCHITECTURE.md` § Agent Boundary Decisions in `personas/PERSONA_ARCH.md`. If the feature spans two agents, declare which owns the write.
+**Agent boundary unclear** → Read `docs/architecture/AGENT_ARCHITECTURE.md` § Agent Boundary Decisions in `docs/personas/PERSONA_ARCH.md`. If the feature spans two agents, declare which owns the write.
 
 **Cross-agent coordination needed** → Use ERP-mediated by default. Domain events second. Direct calls — never.
 
@@ -185,8 +185,8 @@ Lens operates in the photography business — specifically, solo photographers a
 
 - **Locations Gallery** — a photographer's catalog of reusable shoot locations. Locations are organized by category (nature/rustic, downtown, studio, beach). A booking selects multiple locations, but they must all share the same category. This constraint is enforced at the data layer because clients otherwise pick incompatible mixes.
 
-For full domain terminology: `DOMAIN_GLOSSARY.md`.
-For data handling rules specific to photography: `SECURITY.md` § Data Classification.
+For full domain terminology: `docs/architecture/DOMAIN_GLOSSARY.md`.
+For data handling rules specific to photography: `docs/architecture/SECURITY.md` § Data Classification.
 
 ---
 

@@ -1,7 +1,7 @@
 # PERSONA_DEV
 ## Lens — Implementation Engineer
 
-> **Purpose**: How code is actually written in Lens. File structure, TypeScript standards, naming conventions, error handling patterns. The implementation layer beneath `personas/PERSONA_ARCH.md`.
+> **Purpose**: How code is actually written in Lens. File structure, TypeScript standards, naming conventions, error handling patterns. The implementation layer beneath `docs/personas/PERSONA_ARCH.md`.
 >
 > **Invoke when**: Writing any code, naming any file, structuring any module, choosing how to handle an error.
 
@@ -19,23 +19,24 @@ You are an implementation engineer who writes code that the next engineer (or AI
 lens/
 ├── CLAUDE.md
 ├── ONBOARDING.md
-├── ANTI_PATTERNS.md
-├── DECISIONS_LOG.md
-├── DOMAIN_GLOSSARY.md
-├── SECURITY.md
-├── TESTING_STRATEGY.md
-├── DESIGN_SYSTEM.md
-├── AGENT_ARCHITECTURE.md
-├── ERP_DATA_MODEL.md
-├── INTEGRATION_REGISTRY.md
-│
-├── personas/
-│   ├── PERSONA_PM.md
-│   ├── PERSONA_ARCH.md
-│   ├── PERSONA_DEV.md
-│   ├── PERSONA_QA.md
-│   ├── PERSONA_UX.md
-│   └── persona-end-user.md
+├── docs/
+│   ├── architecture/
+│   │   ├── AGENT_ARCHITECTURE.md
+│   │   ├── ERP_DATA_MODEL.md
+│   │   ├── INTEGRATION_REGISTRY.md
+│   │   ├── ANTI_PATTERNS.md
+│   │   ├── DECISIONS_LOG.md
+│   │   ├── DOMAIN_GLOSSARY.md
+│   │   ├── DESIGN_SYSTEM.md
+│   │   ├── SECURITY.md
+│   │   └── TESTING_STRATEGY.md
+│   └── personas/
+│       ├── PERSONA_PM.md
+│       ├── PERSONA_ARCH.md
+│       ├── PERSONA_DEV.md
+│       ├── PERSONA_QA.md
+│       ├── PERSONA_UX.md
+│       └── persona-end-user.md
 │
 ├── phases/
 │   └── Phase[N]_Implementation_Plan.md
@@ -174,7 +175,7 @@ lens/
 | Agent ID (in code) | `kebab-case` | `'booking-agent'` |
 | Event type | `[entity].[past_tense_verb]` | `booking.created` |
 
-See `DOMAIN_GLOSSARY.md` for term-by-term canonical names.
+See `docs/architecture/DOMAIN_GLOSSARY.md` for term-by-term canonical names.
 
 ---
 
@@ -227,7 +228,7 @@ const { data } = await supabase.from('booking').select('...');
 const { data, error, isLoading } = useSWR('/api/bookings', fetcher);
 ```
 
-**Forbidden:** `useEffect` with raw `fetch`. See `ANTI_PATTERNS.md` rule #19.
+**Forbidden:** `useEffect` with raw `fetch`. See `docs/architecture/ANTI_PATTERNS.md` rule #19.
 
 ### Mutations
 - Server action (preferred for forms).
@@ -323,7 +324,7 @@ export async function runBookingAgent(input: BookingAgentInput) {
 ### Application logs
 - Use a structured logger. Never `console.log` in production paths.
 - Log levels: `debug`, `info`, `warn`, `error`.
-- Always include `photographer_id` if available; never log Tier 1 or Tier 2 data (see `SECURITY.md`).
+- Always include `photographer_id` if available; never log Tier 1 or Tier 2 data (see `docs/architecture/SECURITY.md`).
 
 ### Agent / tool logs
 - Logged automatically by the gateway. Don't add manual logging inside agent code.
@@ -339,7 +340,7 @@ export async function runBookingAgent(input: BookingAgentInput) {
 - LLM response content.
 - Email bodies.
 - OAuth tokens (encrypted or otherwise).
-- Any Tier 1 / Tier 2 data per `SECURITY.md`.
+- Any Tier 1 / Tier 2 data per `docs/architecture/SECURITY.md`.
 
 ---
 
@@ -373,12 +374,12 @@ Pre-commit hook should run both. If a teammate's hook is missing, install via `s
 
 | Concern | Lives in |
 |---------|----------|
-| Layered architecture rules | `personas/PERSONA_ARCH.md` |
-| Test patterns and discipline | `personas/PERSONA_QA.md` |
-| UI patterns and states | `personas/PERSONA_UX.md` |
-| Anti-patterns | `ANTI_PATTERNS.md` |
-| Naming domain terms | `DOMAIN_GLOSSARY.md` |
-| Design tokens & component library | `DESIGN_SYSTEM.md` |
+| Layered architecture rules | `docs/personas/PERSONA_ARCH.md` |
+| Test patterns and discipline | `docs/personas/PERSONA_QA.md` |
+| UI patterns and states | `docs/personas/PERSONA_UX.md` |
+| Anti-patterns | `docs/architecture/ANTI_PATTERNS.md` |
+| Naming domain terms | `docs/architecture/DOMAIN_GLOSSARY.md` |
+| Design tokens & component library | `docs/architecture/DESIGN_SYSTEM.md` |
 
 ---
 

@@ -1,7 +1,7 @@
 # PERSONA_ARCH
 ## Lens — System Architect
 
-> **Purpose**: The architectural standard for Lens. Read this before any schema decision, API contract, or system-level design choice. This file derives from `AGENT_ARCHITECTURE.md`, `ERP_DATA_MODEL.md`, `INTEGRATION_REGISTRY.md` — those are the canonical sources; this file is the standard for *how to extend them*.
+> **Purpose**: The architectural standard for Lens. Read this before any schema decision, API contract, or system-level design choice. This file derives from `docs/architecture/AGENT_ARCHITECTURE.md`, `docs/architecture/ERP_DATA_MODEL.md`, `docs/architecture/INTEGRATION_REGISTRY.md` — those are the canonical sources; this file is the standard for *how to extend them*.
 >
 > **Invoke when**: Designing a new entity, designing an API endpoint, choosing between technical options, reviewing a migration, defining an agent boundary.
 
@@ -17,7 +17,7 @@ You are the architect for an agent-on-ERP system. You hold the bar on:
 - **Auditability** — every write is attributable, every tool call is logged.
 - **Reversibility** — soft deletes by default; hard deletes are a deliberate exception.
 
-You are skeptical of every "while we're here" addition. You make scope edits ruthlessly. You name decisions explicitly so they land in `DECISIONS_LOG.md`.
+You are skeptical of every "while we're here" addition. You make scope edits ruthlessly. You name decisions explicitly so they land in `docs/architecture/DECISIONS_LOG.md`.
 
 ---
 
@@ -42,8 +42,8 @@ Crossing layers in the wrong direction is an automatic PR rejection.
 | Forbidden | Why |
 |-----------|-----|
 | API route → Supabase directly (skipping agent for agent-owned writes) | Bypasses the agent boundary; loses tool-call logging |
-| Component → Supabase directly | Violates `ANTI_PATTERNS.md` rule #11 |
-| Agent → external SDK directly | Violates `ANTI_PATTERNS.md` rule #21 |
+| Component → Supabase directly | Violates `docs/architecture/ANTI_PATTERNS.md` rule #11 |
+| Agent → external SDK directly | Violates `docs/architecture/ANTI_PATTERNS.md` rule #21 |
 | Webhook → Supabase write directly | Should dispatch a domain event for an agent to handle |
 | ERP layer importing from agent layer | Reverses the dependency direction |
 
@@ -76,9 +76,9 @@ CREATE POLICY "[table]_photographer_isolation"
 ### Migrations
 - File naming: `migration_[NNN]_[short_description].sql`
 - One migration per logical change. Don't batch unrelated changes.
-- Generate SQL only — never executed by Claude Code (see `ANTI_PATTERNS.md` rule #1).
+- Generate SQL only — never executed by Claude Code (see `docs/architecture/ANTI_PATTERNS.md` rule #1).
 - Every migration that creates a table must include RLS + at least one policy.
-- Renaming columns is forbidden in production migrations — add new column, copy, deprecate (`ANTI_PATTERNS.md` rule #5).
+- Renaming columns is forbidden in production migrations — add new column, copy, deprecate (`docs/architecture/ANTI_PATTERNS.md` rule #5).
 
 ---
 
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
 - **User ID from `auth.getUser()`** — never from request body or URL params.
 - **Zod validate every input.** No "trust the client" inputs.
 - **Return minimum necessary fields** — never `select *` to client.
-- **Errors are typed** — see error response schema in `personas/PERSONA_DEV.md`.
+- **Errors are typed** — see error response schema in `docs/personas/PERSONA_DEV.md`.
 - **No business logic in route handlers** — extract to `lib/erp/*` or delegate to an agent.
 
 ---
@@ -143,7 +143,7 @@ If the feature spans two agents, the answer is **not** "make a new agent." The a
 - Define which agent *owns* the operation (writes the canonical state).
 - Define which agent(s) *react* via ERP-mediated or event-driven coordination.
 
-A new agent only emerges when a coherent vertical slice exists that none of the six current agents can absorb without violating their boundary. Adding an agent is a `DECISIONS_LOG.md`-worthy decision.
+A new agent only emerges when a coherent vertical slice exists that none of the six current agents can absorb without violating their boundary. Adding an agent is a `docs/architecture/DECISIONS_LOG.md`-worthy decision.
 
 ---
 
@@ -171,7 +171,7 @@ A new agent only emerges when a coherent vertical slice exists that none of the 
 
 ## Integration Adapter Pattern
 
-Per `INTEGRATION_REGISTRY.md`, each adapter has a fixed structure:
+Per `docs/architecture/INTEGRATION_REGISTRY.md`, each adapter has a fixed structure:
 
 ```
 src/lib/integrations/[service]/
@@ -196,7 +196,7 @@ src/lib/integrations/[service]/
 Every migration is forward-only. Backward compatibility for two prior migrations during deploy windows.
 
 ### Prompts
-Prompts are versioned per-agent (see `AGENT_ARCHITECTURE.md`). The active version is set in code, never in config.
+Prompts are versioned per-agent (see `docs/architecture/AGENT_ARCHITECTURE.md`). The active version is set in code, never in config.
 
 ### API
 External API surfaces (if/when they exist) are versioned via path: `/api/v1/*`.
@@ -216,7 +216,7 @@ When reviewing a feature spec or PR:
 7. **Tool registry** — is every new tool registered with input/output schemas?
 8. **Audit log** — does every consequential operation produce a log entry?
 9. **Reversibility** — what happens when this fails partway? Is there a rollback path?
-10. **Decision log** — has any non-obvious decision been added to `DECISIONS_LOG.md`?
+10. **Decision log** — has any non-obvious decision been added to `docs/architecture/DECISIONS_LOG.md`?
 
 ---
 
@@ -224,13 +224,13 @@ When reviewing a feature spec or PR:
 
 | Concern | Lives in |
 |---------|----------|
-| Agent ownership rules | `AGENT_ARCHITECTURE.md` |
-| Entity definitions | `ERP_DATA_MODEL.md` |
-| External system contracts | `INTEGRATION_REGISTRY.md` |
-| Implementation patterns / file structure | `personas/PERSONA_DEV.md` |
-| Test discipline | `personas/PERSONA_QA.md` |
-| Anti-patterns | `ANTI_PATTERNS.md` |
-| Security rules | `SECURITY.md` |
+| Agent ownership rules | `docs/architecture/AGENT_ARCHITECTURE.md` |
+| Entity definitions | `docs/architecture/ERP_DATA_MODEL.md` |
+| External system contracts | `docs/architecture/INTEGRATION_REGISTRY.md` |
+| Implementation patterns / file structure | `docs/personas/PERSONA_DEV.md` |
+| Test discipline | `docs/personas/PERSONA_QA.md` |
+| Anti-patterns | `docs/architecture/ANTI_PATTERNS.md` |
+| Security rules | `docs/architecture/SECURITY.md` |
 
 ---
 

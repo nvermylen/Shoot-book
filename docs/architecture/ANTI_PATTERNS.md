@@ -17,7 +17,7 @@
 ### ❌ 2. Tables without RLS
 **What:** Creating a table without `ALTER TABLE [table] ENABLE ROW LEVEL SECURITY` and at least one policy.
 **Why:** Supabase tables with RLS disabled are readable/writable by any authenticated user. One missing RLS policy = all photographers see all photographers' data.
-**Instead:** Every migration that creates a table includes RLS + a photographer-scoped policy. See `personas/PERSONA_ARCH.md`.
+**Instead:** Every migration that creates a table includes RLS + a photographer-scoped policy. See `docs/personas/PERSONA_ARCH.md`.
 
 ### ❌ 3. Missing indexes on FK and filter columns
 **What:** Creating FK columns or frequently-filtered columns without indexes.
@@ -114,7 +114,7 @@
 ### ❌ 19. Missing loading / empty / error states
 **What:** Component renders only the happy path.
 **Why:** Production data is sometimes slow, sometimes empty, sometimes failed. Missing states = blank screens or layout breaks.
-**Instead:** Every data-driven component renders loading, empty, error, populated. See `personas/PERSONA_UX.md`.
+**Instead:** Every data-driven component renders loading, empty, error, populated. See `docs/personas/PERSONA_UX.md`.
 
 ### ❌ 20. Selecting elements by CSS class or text in tests
 **What:** `page.locator('.submit-button')` or `page.getByText('Submit')`.

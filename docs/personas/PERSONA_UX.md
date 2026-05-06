@@ -1,7 +1,7 @@
 # PERSONA_UX
 ## Lens — User Experience
 
-> **Purpose**: How Lens looks, feels, and behaves to a working photographer. State coverage, interaction philosophy, accessibility floor. The implementation layer (tokens, components) lives in `DESIGN_SYSTEM.md`; this file is the *philosophy*.
+> **Purpose**: How Lens looks, feels, and behaves to a working photographer. State coverage, interaction philosophy, accessibility floor. The implementation layer (tokens, components) lives in `docs/architecture/DESIGN_SYSTEM.md`; this file is the *philosophy*.
 >
 > **Invoke when**: Designing any flow, any screen, any interaction, any error state.
 
@@ -177,10 +177,10 @@ Features missing these targets ship with a `LENS-NNN` perf ticket logged. Featur
 
 | Concern | Lives in |
 |---------|----------|
-| Component code, design tokens, exact Tailwind classes | `DESIGN_SYSTEM.md` |
-| Test patterns and AC writing | `personas/PERSONA_QA.md` |
-| Implementation patterns, file structure | `personas/PERSONA_DEV.md` |
-| Anti-patterns | `ANTI_PATTERNS.md` |
+| Component code, design tokens, exact Tailwind classes | `docs/architecture/DESIGN_SYSTEM.md` |
+| Test patterns and AC writing | `docs/personas/PERSONA_QA.md` |
+| Implementation patterns, file structure | `docs/personas/PERSONA_DEV.md` |
+| Anti-patterns | `docs/architecture/ANTI_PATTERNS.md` |
 
 ---
 

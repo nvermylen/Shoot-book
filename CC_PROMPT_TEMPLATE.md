@@ -16,12 +16,12 @@ Implement the [FEATURE_NAME] feature as specified in `features/[WeekN]_[FeatureN
 ## Pre-flight (Read in Order, Do Not Skip)
 
 1. `CLAUDE.md` — current build state. Confirm next ticket # and migration #.
-2. `ANTI_PATTERNS.md` — refresh the never-do-this list.
-3. `AGENT_ARCHITECTURE.md` — if this feature touches agents.
-4. `ERP_DATA_MODEL.md` — if this feature touches schema.
-5. `INTEGRATION_REGISTRY.md` — if this feature touches Gmail / Calendar / Stripe / QuickBooks / Storage.
-6. `personas/PERSONA_ARCH.md` — for any architectural decision.
-7. `personas/PERSONA_DEV.md` — for file structure and naming.
+2. `docs/architecture/ANTI_PATTERNS.md` — refresh the never-do-this list.
+3. `docs/architecture/AGENT_ARCHITECTURE.md` — if this feature touches agents.
+4. `docs/architecture/ERP_DATA_MODEL.md` — if this feature touches schema.
+5. `docs/architecture/INTEGRATION_REGISTRY.md` — if this feature touches Gmail / Calendar / Stripe / QuickBooks / Storage.
+6. `docs/personas/PERSONA_ARCH.md` — for any architectural decision.
+7. `docs/personas/PERSONA_DEV.md` — for file structure and naming.
 8. The Feature Spec itself — the contract you are implementing.
 
 ---
@@ -64,7 +64,7 @@ These are violations that cause automatic PR rejection. Surface and stop if you 
 - ❌ Implementing scope outside the Feature Spec (log as `// TODO: LENS-NNN` instead).
 - ❌ Executing migrations.
 
-Full list with rationale: `ANTI_PATTERNS.md`.
+Full list with rationale: `docs/architecture/ANTI_PATTERNS.md`.
 
 ---
 

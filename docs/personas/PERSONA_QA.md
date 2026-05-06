@@ -1,7 +1,7 @@
 # PERSONA_QA
 ## Lens — Quality Assurance
 
-> **Purpose**: How acceptance criteria are written, how tests are structured, and how edge cases are identified for Lens. This file is the *how* of writing tests; `TESTING_STRATEGY.md` is the *what* (test pyramid, tools, coverage targets).
+> **Purpose**: How acceptance criteria are written, how tests are structured, and how edge cases are identified for Lens. This file is the *how* of writing tests; `docs/architecture/TESTING_STRATEGY.md` is the *what* (test pyramid, tools, coverage targets).
 >
 > **Invoke when**: Writing acceptance criteria for a Feature Spec, writing E2E tests, designing eval scenarios for an agent, reviewing whether a PR is "really done."
 
@@ -27,7 +27,7 @@ Acceptance Criteria are the contract between Product and Engineering. They live 
 1. **Specific** — "Booking is created with status='confirmed' when contract is signed AND deposit is paid" (not "booking should work").
 2. **Testable** — a non-engineer reading it knows exactly how to verify it.
 3. **Bounded** — it tests one behavior. Compound criteria split into multiple ACs.
-4. **Stated in the system's language** — uses entity names from `ERP_DATA_MODEL.md` and tool names from `INTEGRATION_REGISTRY.md`.
+4. **Stated in the system's language** — uses entity names from `docs/architecture/ERP_DATA_MODEL.md` and tool names from `docs/architecture/INTEGRATION_REGISTRY.md`.
 
 ### Example — bad vs good
 
@@ -52,7 +52,7 @@ Every feature ships with this minimum coverage in its test PR:
 | State coverage | 2 | Empty state renders, error state renders |
 | Edge case | 1+ | Domain-specific boundary (see edge case patterns below) |
 
-Total floor: 8 tests. Target: 10. See `TESTING_STRATEGY.md` for test ID conventions.
+Total floor: 8 tests. Target: 10. See `docs/architecture/TESTING_STRATEGY.md` for test ID conventions.
 
 ---
 
@@ -140,7 +140,7 @@ Every test runs in isolation. No test depends on state created by a previous tes
 
 ## Agent Eval Scenarios
 
-For each agent, write evals in three categories (see `AGENT_ARCHITECTURE.md`):
+For each agent, write evals in three categories (see `docs/architecture/AGENT_ARCHITECTURE.md`):
 
 ### Regression evals
 Capture known-good agent behavior on a fixed input. Run on every prompt version bump.
@@ -185,11 +185,11 @@ A feature is **not Done** because the code merges. It's Done when the demo runs 
 
 | Concern | Lives in |
 |---------|----------|
-| Test pyramid, tools, coverage strategy | `TESTING_STRATEGY.md` |
-| Architecture being tested | `personas/PERSONA_ARCH.md` |
-| Implementation being tested | `personas/PERSONA_DEV.md` |
-| What "done" means at the product level | `personas/PERSONA_PM.md` |
-| Anti-patterns | `ANTI_PATTERNS.md` |
+| Test pyramid, tools, coverage strategy | `docs/architecture/TESTING_STRATEGY.md` |
+| Architecture being tested | `docs/personas/PERSONA_ARCH.md` |
+| Implementation being tested | `docs/personas/PERSONA_DEV.md` |
+| What "done" means at the product level | `docs/personas/PERSONA_PM.md` |
+| Anti-patterns | `docs/architecture/ANTI_PATTERNS.md` |
 
 ---
 

@@ -1,7 +1,7 @@
 # TESTING_STRATEGY.md
 ## Lens
 
-> **Purpose**: What gets tested, at what level, with what tools. The *strategy*. `personas/PERSONA_QA.md` covers *how* to write individual tests. CC reads this to understand the full test picture before writing any test file.
+> **Purpose**: What gets tested, at what level, with what tools. The *strategy*. `docs/personas/PERSONA_QA.md` covers *how* to write individual tests. CC reads this to understand the full test picture before writing any test file.
 
 ---
 

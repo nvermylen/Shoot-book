@@ -234,8 +234,8 @@ The Phase 1 trio is non-negotiable: a photographer's most painful flow is "lead 
 | Specific external system contracts | `INTEGRATION_REGISTRY.md` |
 | Specific prompt versions / eval contents | `AGENT_PROMPT_REGISTRY.md` (deferred) |
 | Schema migrations | `migrations/migration_[NNN]_*.sql` |
-| API route patterns | `personas/PERSONA_ARCH.md` |
-| Implementation patterns, file structure, TS standards | `personas/PERSONA_DEV.md` |
+| API route patterns | `docs/personas/PERSONA_ARCH.md` |
+| Implementation patterns, file structure, TS standards | `docs/personas/PERSONA_DEV.md` |
 | OAuth token storage, RLS rules | `SECURITY.md` |
 | Anti-patterns | `ANTI_PATTERNS.md` |
 

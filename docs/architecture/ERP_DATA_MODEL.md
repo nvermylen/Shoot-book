@@ -335,7 +335,7 @@ See `DOMAIN_GLOSSARY.md` for the term-to-column mapping.
 | Schema migration files | `migrations/migration_[NNN]_*.sql` |
 | How agents read/write these entities | `AGENT_ARCHITECTURE.md` |
 | External system mapping (e.g., `invoice.quickbooks_invoice_id`) | `INTEGRATION_REGISTRY.md` |
-| Database conventions (indexes, RLS, soft-delete patterns) | `personas/PERSONA_ARCH.md` |
+| Database conventions (indexes, RLS, soft-delete patterns) | `docs/personas/PERSONA_ARCH.md` |
 
 ---
 

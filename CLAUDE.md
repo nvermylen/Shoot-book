@@ -1,4 +1,7 @@
 # CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ## Lens
 
 > **This file is read automatically by Claude Code at every session start.**
@@ -20,7 +23,7 @@
 | **Linear** | [LINEAR_PROJECT_URL] |
 | **Ticket prefix** | LENS |
 | **Owner** | Nate Vermylen |
-| **Design partner** | Morgan Vermylen Photography (`personas/persona-end-user.md`) |
+| **Design partner** | Morgan Vermylen Photography (`docs/personas/persona-end-user.md`) |
 
 ---
 
@@ -28,11 +31,11 @@
 
 | File | Why |
 |------|-----|
-| `AGENT_ARCHITECTURE.md` | **Keystone.** Three-layer system, six agents, gateway pattern, multi-agent coordination rules. |
-| `ERP_DATA_MODEL.md` | Canonical entities and relationships. The intent layer. |
-| `INTEGRATION_REGISTRY.md` | External system contracts (Gmail, Calendar, Stripe, QuickBooks, Storage). |
-| `personas/PERSONA_ARCH.md` | Schema, API, layer-separation standards. |
-| `personas/PERSONA_DEV.md` | File structure, TS standards, naming. |
+| `docs/architecture/AGENT_ARCHITECTURE.md` | **Keystone.** Three-layer system, six agents, gateway pattern, multi-agent coordination rules. |
+| `docs/architecture/ERP_DATA_MODEL.md` | Canonical entities and relationships. The intent layer. |
+| `docs/architecture/INTEGRATION_REGISTRY.md` | External system contracts (Gmail, Calendar, Stripe, QuickBooks, Storage). |
+| `docs/personas/PERSONA_ARCH.md` | Schema, API, layer-separation standards. |
+| `docs/personas/PERSONA_DEV.md` | File structure, TS standards, naming. |
 
 If a Claude Code question can be answered by these five files, the answer is in those files — not in this one.
 
@@ -40,18 +43,33 @@ If a Claude Code question can be answered by these five files, the answer is in 
 
 ## Current Build State
 
-> ⚠️ Update this section at the START of every sprint. CC uses it to avoid naming conflicts and sequence work correctly.
+> ⚠️ Update this section at the END of every sprint / after every merge that introduces a new ticket or migration.
+> CC uses it to avoid naming conflicts and sequence work correctly.
+> **Sprint-close ritual:** update ticket #, migration #, branch name, and feature spec path before closing the sprint.
 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
-Current sprint:      Sprint 1 — Auth + ERP foundation + LeadAgent skeleton
-Last ticket:         LENS-000  (project initialized)
-Next ticket:         LENS-001
-Last migration:      —
-Next migration:      migration_001_photographer_and_clients.sql
-Last PR branch:      —
-Active feature spec: features/Sprint1_Foundation_Feature_Spec.md
+Current sprint:      Sprint 2 — ERP completion + AI infrastructure
+Last ticket:         LENS-001  (auth + photographer/client/lead tables)
+Next ticket:         LENS-002
+Last migration:      migration_001_photographer_and_clients.sql
+Next migration:      migration_002_phase1_erp.sql
+Last PR branch:      (LENS-001 squash-merged to main)
+Active feature spec: TBD — drafting Sprint 2 spec next
 ```
+
+---
+
+## Development Commands
+
+```bash
+npm run dev          # Start dev server (Next.js on localhost:3000)
+npm run build        # Production build
+npm run lint         # ESLint (eslint-config-next)
+npx tsc --noEmit     # Type check (run before every commit)
+```
+
+Path alias: `@/*` maps to `./src/*` (configured in `tsconfig.json`).
 
 ---
 
@@ -59,10 +77,10 @@ Active feature spec: features/Sprint1_Foundation_Feature_Spec.md
 
 | Layer | Technology | Version | Location |
 |-------|-----------|---------|----------|
-| Framework | Next.js App Router | 15.x | `src/app/` |
+| Framework | Next.js App Router | 16.x | `src/app/` |
 | Language | TypeScript (strict) | 5.x | `tsconfig.json` |
-| Styling | Tailwind CSS | 4.x | `tailwind.config.ts` |
-| Database | Supabase (PostgreSQL) | — | See `ERP_DATA_MODEL.md` |
+| Styling | Tailwind CSS | 4.x | `src/app/globals.css` (`@theme inline`) |
+| Database | Supabase (PostgreSQL) | — | See `docs/architecture/ERP_DATA_MODEL.md` |
 | Auth | Supabase Auth | — | `src/lib/supabase/` |
 | Data fetching | SWR | 2.x | Client components only |
 | AI | Anthropic Claude SDK | latest | `src/lib/ai/gateway.ts` (only file) |
@@ -74,12 +92,18 @@ Active feature spec: features/Sprint1_Foundation_Feature_Spec.md
 
 ## Directory Structure
 
-> Full structure documented in `personas/PERSONA_DEV.md`. Highlights:
+> Full structure documented in `docs/personas/PERSONA_DEV.md`. Highlights:
 
 ```
 src/
-├── app/                        ← Next.js routes
-├── components/                 ← React components
+├── app/
+│   ├── (auth)/                 ← Login, signup, OAuth callback (unauthenticated)
+│   ├── (dashboard)/            ← All authenticated pages (sidebar layout)
+│   ├── api/                    ← API routes (excluded from middleware auth)
+│   ├── layout.tsx              ← Root layout (fonts, metadata)
+│   └── globals.css             ← Tailwind + design tokens (@theme inline)
+├── components/
+│   └── primitives/             ← Avatar, Pill, Section, CopyButton, etc.
 ├── lib/
 │   ├── supabase/               ← client.ts | server.ts | admin.ts
 │   ├── ai/
@@ -92,14 +116,27 @@ src/
 │   ├── events/                 ← domain event bus
 │   └── crypto/tokens.ts        ← OAuth token encryption
 ├── types/                      ← erp.ts, agent.ts, events.ts, api.ts
-└── middleware.ts               ← Supabase session refresh
+└── middleware.ts               ← Supabase session refresh + auth redirect
 ```
+
+---
+
+## Key Architectural Patterns
+
+**Route groups.** `(auth)` holds login/signup/callback — unauthenticated pages. `(dashboard)` holds all authenticated pages and provides the sidebar + top-bar layout. Middleware redirects unauthenticated users to `/login` and authenticated users away from auth routes.
+
+**Supabase three-client pattern.** Three clients, each for a different context:
+- `client.ts` — browser client (`createBrowserClient`), used in `"use client"` components
+- `server.ts` — server client (`createServerClient` with cookies), used in Server Components and Route Handlers
+- `admin.ts` — service-role client, bypasses RLS, used only for privileged server-side operations (e.g., signup user creation)
+
+**Design tokens.** OKLCH color system defined in `src/app/globals.css` via CSS custom properties. Semantic names: `--paper` / `--ink` for surfaces and text, `--accent` / `--success` / `--warn` / `--danger` / `--info` for status. Exposed to Tailwind via `@theme inline` block (e.g., `bg-paper`, `text-ink-2`). Three font stacks: `--font-sans` (Inter), `--font-display` (Inter Tight), `--font-mono` (JetBrains Mono).
 
 ---
 
 ## The Six Agents
 
-See `AGENT_ARCHITECTURE.md` for full ownership/tool/boundary specs.
+See `docs/architecture/AGENT_ARCHITECTURE.md` for full ownership/tool/boundary specs.
 
 | Agent | Phase | Owns |
 |-------|-------|------|
@@ -114,7 +151,7 @@ See `AGENT_ARCHITECTURE.md` for full ownership/tool/boundary specs.
 
 ## Integrations
 
-See `INTEGRATION_REGISTRY.md` for full per-integration spec.
+See `docs/architecture/INTEGRATION_REGISTRY.md` for full per-integration spec.
 
 | Service | Phase | Direction | Primary agent(s) |
 |---------|-------|-----------|------------------|
@@ -148,7 +185,7 @@ See `INTEGRATION_REGISTRY.md` for full per-integration spec.
 
 1. **Generate SQL only** — filename: `migration_[NNN]_[description].sql`.
 2. **Never execute** migrations via Claude Code — applied manually in Supabase dashboard.
-3. **Current highest:** none yet — next file = `migration_001_photographer_and_clients.sql`.
+3. **Current highest:** `migration_001_photographer_and_clients.sql` — next file = `migration_002_phase1_erp.sql`.
 4. **Every new table:** RLS enabled + at least one photographer-scoped policy in the same migration.
 5. **File header:** `-- Migration: [NNN] | [description] | [date]`.
 6. **After applying:** update Current Build State above.
@@ -189,7 +226,7 @@ npm run lint        # zero errors
 
 ## What NOT To Do
 
-> Top of `ANTI_PATTERNS.md`. Non-negotiable.
+> Top of `docs/architecture/ANTI_PATTERNS.md`. Non-negotiable.
 
 | # | Never | Instead |
 |---|-------|---------|
@@ -205,24 +242,24 @@ npm run lint        # zero errors
 | 10 | Skip `npx tsc --noEmit` | Run before every commit |
 | 11 | Log prompt content or tokens | Token counts only — ZDR posture |
 
-> Full list and explanations: `ANTI_PATTERNS.md`.
+> Full list and explanations: `docs/architecture/ANTI_PATTERNS.md`.
 
 ---
 
 ## Sprint Workflow
 
 ```
-1. Read this file               → current build state
-2. Read the active Feature Spec → what's being built
-3. Read AGENT_ARCHITECTURE.md   → if touching agents
-4. Read ERP_DATA_MODEL.md       → if touching schema
-5. Read INTEGRATION_REGISTRY.md → if touching integrations
-6. Read ANTI_PATTERNS.md        → before writing code
-7. Read relevant persona        → ARCH for design, DEV for implementation
-8. Execute CC Prompt            → work through PRs in dependency order
-9. Generate migrations          → SQL files only, never run them
-10. Quality gate                → tsc + lint pass before commit
-11. Update this file            → new ticket #, new migration #, new branch
+1. Read this file                                    → current build state
+2. Read the active Feature Spec                      → what's being built
+3. Read docs/architecture/AGENT_ARCHITECTURE.md      → if touching agents
+4. Read docs/architecture/ERP_DATA_MODEL.md          → if touching schema
+5. Read docs/architecture/INTEGRATION_REGISTRY.md    → if touching integrations
+6. Read docs/architecture/ANTI_PATTERNS.md           → before writing code
+7. Read relevant persona                             → ARCH for design, DEV for implementation
+8. Execute CC Prompt                                 → work through PRs in dependency order
+9. Generate migrations                               → SQL files only, never run them
+10. Quality gate                                     → tsc + lint pass before commit
+11. Update Current Build State                       → ticket #, migration #, branch name, feature spec path
 ```
 
 ---
@@ -231,21 +268,21 @@ npm run lint        # zero errors
 
 | File | Read When |
 |------|-----------|
-| `AGENT_ARCHITECTURE.md` | Anything touching agents, tools, gateway, prompts |
-| `ERP_DATA_MODEL.md` | Anything touching entities or schema |
-| `INTEGRATION_REGISTRY.md` | Anything touching Gmail / Calendar / Stripe / QB / Storage |
-| `ANTI_PATTERNS.md` | Before starting any PR |
-| `DECISIONS_LOG.md` | When a pattern seems wrong — was it a deliberate decision? |
-| `DOMAIN_GLOSSARY.md` | Naming anything domain-specific |
-| `DESIGN_SYSTEM.md` | Building any UI component |
-| `SECURITY.md` | Touching auth, encryption, OAuth, external APIs |
-| `personas/PERSONA_ARCH.md` | Schema or API contract decisions |
-| `personas/PERSONA_DEV.md` | Implementation pattern questions |
-| `personas/PERSONA_QA.md` | Writing acceptance criteria or tests |
-| `personas/PERSONA_PM.md` | Scope decisions, what to build / not build |
-| `personas/PERSONA_UX.md` | UI flow, interaction, state coverage |
-| `personas/persona-end-user.md` | Understanding Morgan (design partner #1) |
+| `docs/architecture/AGENT_ARCHITECTURE.md` | Anything touching agents, tools, gateway, prompts |
+| `docs/architecture/ERP_DATA_MODEL.md` | Anything touching entities or schema |
+| `docs/architecture/INTEGRATION_REGISTRY.md` | Anything touching Gmail / Calendar / Stripe / QB / Storage |
+| `docs/architecture/ANTI_PATTERNS.md` | Before starting any PR |
+| `docs/architecture/DECISIONS_LOG.md` | When a pattern seems wrong — was it a deliberate decision? |
+| `docs/architecture/DOMAIN_GLOSSARY.md` | Naming anything domain-specific |
+| `docs/architecture/DESIGN_SYSTEM.md` | Building any UI component |
+| `docs/architecture/SECURITY.md` | Touching auth, encryption, OAuth, external APIs |
+| `docs/personas/PERSONA_ARCH.md` | Schema or API contract decisions |
+| `docs/personas/PERSONA_DEV.md` | Implementation pattern questions |
+| `docs/personas/PERSONA_QA.md` | Writing acceptance criteria or tests |
+| `docs/personas/PERSONA_PM.md` | Scope decisions, what to build / not build |
+| `docs/personas/PERSONA_UX.md` | UI flow, interaction, state coverage |
+| `docs/personas/persona-end-user.md` | Understanding Morgan (design partner #1) |
 
 ---
 
-*Lens | CLAUDE.md | Updated: [DATE] | Phase 1 Sprint 1*
+*Lens | CLAUDE.md | Updated: 2026-05-06 | Phase 1 Sprint 2*

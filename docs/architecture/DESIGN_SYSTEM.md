@@ -444,8 +444,8 @@ Canonical icon mapping:
 
 | Concern | Lives in |
 |---------|----------|
-| State patterns and interaction philosophy | `personas/PERSONA_UX.md` |
-| Component file structure and `data-testid` naming | `personas/PERSONA_DEV.md` |
+| State patterns and interaction philosophy | `docs/personas/PERSONA_UX.md` |
+| Component file structure and `data-testid` naming | `docs/personas/PERSONA_DEV.md` |
 | UI anti-patterns | `ANTI_PATTERNS.md` |
 
 ---

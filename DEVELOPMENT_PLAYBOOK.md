@@ -54,26 +54,26 @@ NEXT PHASE
 |------|-----------|
 | `CLAUDE.md` | Every session — current build state |
 | `ONBOARDING.md` | First session in a new context window |
-| `AGENT_ARCHITECTURE.md` | Anything touching agents, gateway, prompts, tools |
-| `ERP_DATA_MODEL.md` | Anything touching schema or entities |
-| `INTEGRATION_REGISTRY.md` | Anything touching Gmail / Calendar / Stripe / QB / Storage |
-| `ANTI_PATTERNS.md` | Before any PR |
-| `DECISIONS_LOG.md` | When a pattern looks wrong — was it deliberate? |
-| `DOMAIN_GLOSSARY.md` | Naming anything domain-specific |
-| `SECURITY.md` | Auth, encryption, OAuth, AI prompts, integrations |
-| `TESTING_STRATEGY.md` | Writing tests |
-| `DESIGN_SYSTEM.md` | Building UI |
+| `docs/architecture/AGENT_ARCHITECTURE.md` | Anything touching agents, gateway, prompts, tools |
+| `docs/architecture/ERP_DATA_MODEL.md` | Anything touching schema or entities |
+| `docs/architecture/INTEGRATION_REGISTRY.md` | Anything touching Gmail / Calendar / Stripe / QB / Storage |
+| `docs/architecture/ANTI_PATTERNS.md` | Before any PR |
+| `docs/architecture/DECISIONS_LOG.md` | When a pattern looks wrong — was it deliberate? |
+| `docs/architecture/DOMAIN_GLOSSARY.md` | Naming anything domain-specific |
+| `docs/architecture/SECURITY.md` | Auth, encryption, OAuth, AI prompts, integrations |
+| `docs/architecture/TESTING_STRATEGY.md` | Writing tests |
+| `docs/architecture/DESIGN_SYSTEM.md` | Building UI |
 
 ### Persona files (invoked situationally)
 
 | Persona | Invoke for |
 |---------|-----------|
-| `personas/PERSONA_PM.md` | Scope decisions, prioritization |
-| `personas/PERSONA_ARCH.md` | Schema, API, layering decisions |
-| `personas/PERSONA_DEV.md` | Implementation patterns, naming |
-| `personas/PERSONA_QA.md` | AC writing, eval design |
-| `personas/PERSONA_UX.md` | UI flow, state coverage |
-| `personas/persona-end-user.md` | Understanding Morgan (design partner #1) |
+| `docs/personas/PERSONA_PM.md` | Scope decisions, prioritization |
+| `docs/personas/PERSONA_ARCH.md` | Schema, API, layering decisions |
+| `docs/personas/PERSONA_DEV.md` | Implementation patterns, naming |
+| `docs/personas/PERSONA_QA.md` | AC writing, eval design |
+| `docs/personas/PERSONA_UX.md` | UI flow, state coverage |
+| `docs/personas/persona-end-user.md` | Understanding Morgan (design partner #1) |
 
 ### Process templates (per-instance)
 
@@ -92,24 +92,24 @@ lens/
 ├── CLAUDE.md                       ← live build state
 ├── ONBOARDING.md                   ← fast orientation
 ├── DEVELOPMENT_PLAYBOOK.md         ← (this file)
-├── ANTI_PATTERNS.md
-├── DECISIONS_LOG.md
-├── DOMAIN_GLOSSARY.md
-├── SECURITY.md
-├── TESTING_STRATEGY.md
-├── DESIGN_SYSTEM.md
-│
-├── AGENT_ARCHITECTURE.md           ← keystone
-├── ERP_DATA_MODEL.md
-├── INTEGRATION_REGISTRY.md
-│
-├── personas/
-│   ├── PERSONA_PM.md
-│   ├── PERSONA_ARCH.md
-│   ├── PERSONA_DEV.md
-│   ├── PERSONA_QA.md
-│   ├── PERSONA_UX.md
-│   └── persona-end-user.md
+├── docs/
+│   ├── architecture/
+│   │   ├── AGENT_ARCHITECTURE.md   ← keystone
+│   │   ├── ERP_DATA_MODEL.md
+│   │   ├── INTEGRATION_REGISTRY.md
+│   │   ├── ANTI_PATTERNS.md
+│   │   ├── DECISIONS_LOG.md
+│   │   ├── DOMAIN_GLOSSARY.md
+│   │   ├── DESIGN_SYSTEM.md
+│   │   ├── SECURITY.md
+│   │   └── TESTING_STRATEGY.md
+│   └── personas/
+│       ├── PERSONA_PM.md
+│       ├── PERSONA_ARCH.md
+│       ├── PERSONA_DEV.md
+│       ├── PERSONA_QA.md
+│       ├── PERSONA_UX.md
+│       └── persona-end-user.md
 │
 ├── PHASE_TEMPLATE.md
 ├── FEATURE_SPEC_TEMPLATE.md
@@ -124,7 +124,7 @@ lens/
 ├── migrations/
 │   └── migration_[NNN]_[name].sql
 │
-├── src/                            ← (see PERSONA_DEV.md for full structure)
+├── src/                            ← (see docs/personas/PERSONA_DEV.md for full structure)
 └── tests/
 ```
 
@@ -220,7 +220,7 @@ You are processing a queue of feature specs in order. For each item:
 6. Move the spec from active/ to completed/.
 7. Proceed to next item in queue/.
 
-Before starting, read CLAUDE.md, ANTI_PATTERNS.md, and AGENT_ARCHITECTURE.md.
+Before starting, read CLAUDE.md, docs/architecture/ANTI_PATTERNS.md, and docs/architecture/AGENT_ARCHITECTURE.md.
 
 Stop the chain on:
 - BLOCKED gate report.
@@ -278,15 +278,15 @@ Plus the agent-on-ERP gates:
 | File | Update when |
 |------|-------------|
 | `CLAUDE.md` | Sprint start; after every applied migration |
-| `AGENT_ARCHITECTURE.md` | New agent, agent boundary change, gateway extension |
-| `ERP_DATA_MODEL.md` | New entity or relationship change |
-| `INTEGRATION_REGISTRY.md` | New integration or scope/sync change |
-| `ANTI_PATTERNS.md` | Bug traced to a pattern; recurring PR rejection |
-| `DECISIONS_LOG.md` | Any non-obvious decision between viable options |
-| `DOMAIN_GLOSSARY.md` | Spec introduces a new term; naming inconsistency surfaces |
-| `DESIGN_SYSTEM.md` | New component built; tokens established |
-| `SECURITY.md` | New integration; auth change; data exposure consideration |
-| `TESTING_STRATEGY.md` | New test pattern; load test budget set |
+| `docs/architecture/AGENT_ARCHITECTURE.md` | New agent, agent boundary change, gateway extension |
+| `docs/architecture/ERP_DATA_MODEL.md` | New entity or relationship change |
+| `docs/architecture/INTEGRATION_REGISTRY.md` | New integration or scope/sync change |
+| `docs/architecture/ANTI_PATTERNS.md` | Bug traced to a pattern; recurring PR rejection |
+| `docs/architecture/DECISIONS_LOG.md` | Any non-obvious decision between viable options |
+| `docs/architecture/DOMAIN_GLOSSARY.md` | Spec introduces a new term; naming inconsistency surfaces |
+| `docs/architecture/DESIGN_SYSTEM.md` | New component built; tokens established |
+| `docs/architecture/SECURITY.md` | New integration; auth change; data exposure consideration |
+| `docs/architecture/TESTING_STRATEGY.md` | New test pattern; load test budget set |
 
 ---
 
