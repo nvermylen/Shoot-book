@@ -13,6 +13,15 @@
 
 ---
 
+### LENS-D-007 — Removed chaining-mode workflow from playbook
+**Date:** 2026-05-06
+**Phase:** Phase 1 | Sprint 2
+**Status:** Decided
+
+**Decision:** Removed the ORCHESTRATOR-driven feature chaining workflow (queue/active/completed states, gate reports, SQL manifests) from DEVELOPMENT_PLAYBOOK.md and CC_PROMPT_TEMPLATE.md. Speculative, untested, never used; created drift between docs and reality. Standard per-sprint workflow is the only execution path. Re-introduce only with real-use justification.
+
+---
+
 ### LENS-D-006 — Working name "Lens" as placeholder
 **Date:** 2026-05-04
 **Phase:** Pre-Phase 1 | Setup

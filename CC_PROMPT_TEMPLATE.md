@@ -3,7 +3,7 @@
 
 > **What this is**: The execution instruction for Claude Code for [FEATURE_NAME]. Paste into CC after `/init`. References the Feature Spec at `docs/features/Phase[N]/Sprint[N]_[FeatureName].md`.
 >
-> **Use this template by**: copying it, replacing all `[BRACKET]` placeholders, and either pasting directly into CC (standard mode) or staging in `[phaseN]/cc-prompts/` for ORCHESTRATOR-driven feature chaining.
+> **Use this template by**: copying it, replacing all `[BRACKET]` placeholders, and pasting directly into CC.
 
 ---
 
@@ -122,35 +122,6 @@ Plus:
 > - Anything CC has gotten wrong before in similar features.
 
 [FEATURE_SPECIFIC_NOTES]
-
----
-
-## Chain Integration (Feature Chaining Mode Only)
-
-> Use this block when this prompt runs as part of an ORCHESTRATOR-driven chain (see `DEVELOPMENT_PLAYBOOK.md` § Feature Chaining). Standard one-at-a-time CC sessions can ignore this block.
-
-### Chain Position
-- **This feature:** `[NN]_[FeatureName]`
-- **Previous in chain:** `[NN-1]_[Previous]` (if this isn't first)
-- **Next in chain:** `[NN+1]_[Next]` (if this isn't last)
-
-### Chain Inputs
-- Read previous gate report: `[phaseN]/gates/[NN-1]_GATE_PASSED.md` (if exists).
-- Read previous SQL manifest: `[phaseN]/sql-manifests/[NN-1]_*.md` and confirm it was applied (CLAUDE.md migration # should reflect it).
-
-### Chain Outputs (CC writes these — no human asks)
-1. **Gate report** at `[phaseN]/gates/[NN]_[FeatureName]_GATE.md`:
-   - PASSED if all PRs merged, all ACs pass, all quality gates green.
-   - BLOCKED if a hard-stop decision point was hit. Include: blocker description, options surfaced, what was attempted.
-2. **SQL manifest** at `[phaseN]/sql-manifests/[NN]_[FeatureName]_sql.md`:
-   - Migration files in apply order.
-   - Verification queries to run after applying each.
-   - CLAUDE.md fields to update.
-3. **Move spec** from `[phaseN]/features/queue/[NN]_*.md` → `[phaseN]/features/completed/[NN]_*.md`.
-
-### Chain Stop Conditions
-- BLOCKED gate report → stop. Do not proceed to `[NN+1]`.
-- Migration generation succeeded but cannot be verified without human apply → write SQL manifest and stop with status = AWAITING_SQL_APPLY.
 
 ---
 
