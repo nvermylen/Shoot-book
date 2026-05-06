@@ -50,8 +50,8 @@ If a Claude Code question can be answered by these five files, the answer is in 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
 Current sprint:      Sprint 2 — ERP completion + AI infrastructure
-Last ticket:         LENS-001  (auth + photographer/client/lead tables)
-Next ticket:         LENS-002
+Last ticket:         LENS-002  (doc restructure + CLAUDE.md drift fixes)
+Next ticket:         LENS-003
 Last migration:      migration_001_photographer_and_clients.sql
 Next migration:      migration_002_phase1_erp.sql
 Last PR branch:      (LENS-001 squash-merged to main)
