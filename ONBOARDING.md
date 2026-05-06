@@ -13,7 +13,7 @@
 
 In a typical session, a photographer opens Lens to: see today's bookings, send the next round of automated client comms, follow up on unpaid invoices, deliver finished galleries, and respond to new leads. The system runs the cradle-to-grave workflow from "stranger inquires" through "session paid for and delivered" with AI agents handling the operational glue.
 
-**Current state:** Phase 1 — Foundation. The Lead → Booking → Comms loop is the first deliverable. No code shipped yet. This is the docs-first phase.
+**Current state:** Phase 1 — Foundation. LENS-001 (auth + photographer/client/lead schema) shipped. Sprint 2 (ERP completion + AI infrastructure) in progress. The Lead → Booking → Comms loop is the Phase 1 deliverable; Sprint 3 ships the first agent.
 
 ---
 
@@ -46,7 +46,7 @@ In this order:
 | 2 | `docs/architecture/AGENT_ARCHITECTURE.md` | The system's spine. Three layers, six agents, gateway pattern, coordination rules. |
 | 3 | `docs/architecture/ERP_DATA_MODEL.md` | Canonical entities and relationships. Schema decisions reference this. |
 | 4 | `docs/architecture/ANTI_PATTERNS.md` | The mistakes this codebase is prone to. Reading this prevents most rework. |
-| 5 | The current Feature Spec in `features/` | What you're building this session. |
+| 5 | The current Feature Spec in `docs/features/` | What you're building this session. |
 
 ---
 
@@ -100,13 +100,13 @@ lens/
 ├── phases/
 │   └── Phase[N]_Implementation_Plan.md
 │
-├── features/
-│   └── [WeekN]_[Name]_Feature_Spec.md
+├── docs/features/
+│   └── Phase[N]/Sprint[N]_[Name].md
 │
 ├── prompts/
 │   └── [WeekN]_CC_Prompt.md
 │
-├── migrations/
+├── supabase/migrations/
 │   └── migration_[NNN]_[name].sql
 │
 ├── src/
@@ -204,4 +204,4 @@ Full phase details when they exist: `phases/Phase[N]_Implementation_Plan.md`.
 
 ---
 
-*Lens | Onboarding | Last updated: 2026-05-04*
+*Lens | Onboarding | Last updated: 2026-05-06*

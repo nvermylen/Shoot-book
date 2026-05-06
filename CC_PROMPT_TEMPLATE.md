@@ -1,7 +1,7 @@
 # Claude Code Prompt — [FEATURE_NAME]
 ## Lens | LENS-[NNN-NNN] | Phase [N], Sprint [N]
 
-> **What this is**: The execution instruction for Claude Code for [FEATURE_NAME]. Paste into CC after `/init`. References the Feature Spec at `features/[WeekN]_[FeatureName]_Feature_Spec.md`.
+> **What this is**: The execution instruction for Claude Code for [FEATURE_NAME]. Paste into CC after `/init`. References the Feature Spec at `docs/features/Phase[N]/Sprint[N]_[FeatureName].md`.
 >
 > **Use this template by**: copying it, replacing all `[BRACKET]` placeholders, and either pasting directly into CC (standard mode) or staging in `[phaseN]/cc-prompts/` for ORCHESTRATOR-driven feature chaining.
 
@@ -9,7 +9,7 @@
 
 ## Mission
 
-Implement the [FEATURE_NAME] feature as specified in `features/[WeekN]_[FeatureName]_Feature_Spec.md`. Work through PRs in the order declared in the spec. Stop at any decision point not covered by the spec — do not guess on foundational decisions.
+Implement the [FEATURE_NAME] feature as specified in `docs/features/Phase[N]/Sprint[N]_[FeatureName].md`. Work through PRs in the order declared in the spec. Stop at any decision point not covered by the spec — do not guess on foundational decisions.
 
 ---
 

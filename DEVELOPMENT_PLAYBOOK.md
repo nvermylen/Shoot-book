@@ -16,7 +16,7 @@
 | Deployment | Vercel (auto on `main`) |
 | Database | Supabase (PostgreSQL + Auth + Storage) |
 | AI provider | Anthropic Claude (ZDR configured) |
-| Stack | Next.js 15 App Router · TypeScript strict · Tailwind 4 · SWR · Zod · Playwright + Vitest + k6 |
+| Stack | Next.js 16 App Router · TypeScript strict · Tailwind 4 · SWR · Zod · Playwright + Vitest + k6 |
 
 ---
 
@@ -80,7 +80,7 @@ NEXT PHASE
 | Template | Used as |
 |----------|---------|
 | `PHASE_TEMPLATE.md` | Copy → `phases/Phase[N]_Implementation_Plan.md` |
-| `FEATURE_SPEC_TEMPLATE.md` | Copy → `features/[WeekN]_[Name]_Feature_Spec.md` |
+| `FEATURE_SPEC_TEMPLATE.md` | Copy → `docs/features/Phase[N]/Sprint[N]_[Name].md` |
 | `CC_PROMPT_TEMPLATE.md` | Copy → `prompts/[WeekN]_CC_Prompt.md` (or to `[phaseN]/cc-prompts/` for chaining) |
 
 ---
@@ -117,11 +117,11 @@ lens/
 │
 ├── phases/
 │   └── Phase[N]_Implementation_Plan.md
-├── features/
-│   └── [WeekN]_[Name]_Feature_Spec.md
+├── docs/features/
+│   └── Phase[N]/Sprint[N]_[Name].md
 ├── prompts/
 │   └── [WeekN]_CC_Prompt.md
-├── migrations/
+├── supabase/migrations/
 │   └── migration_[NNN]_[name].sql
 │
 ├── src/                            ← (see docs/personas/PERSONA_DEV.md for full structure)
@@ -166,7 +166,7 @@ Tickets are created in Linear before CC executes the corresponding CC Prompt.
 ```
 1. Phase plan exists in phases/Phase[N]_Implementation_Plan.md
 2. Pick the next feature from the phase's table
-3. Copy FEATURE_SPEC_TEMPLATE.md → features/[WeekN]_[Name]_Feature_Spec.md
+3. Copy FEATURE_SPEC_TEMPLATE.md → docs/features/Phase[N]/Sprint[N]_[Name].md
 4. Fill the spec: Problem, Solution, PR breakdown, ACs
 5. Create Linear tickets matching the PR breakdown
 6. Copy CC_PROMPT_TEMPLATE.md → prompts/[WeekN]_CC_Prompt.md
@@ -305,4 +305,4 @@ When in doubt, the answer is in one of these files. If it isn't, surface the gap
 
 ---
 
-*Lens | Development Playbook | Last updated: 2026-05-04*
+*Lens | Development Playbook | Last updated: 2026-05-06*
