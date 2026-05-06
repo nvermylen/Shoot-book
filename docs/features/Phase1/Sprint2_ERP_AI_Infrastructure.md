@@ -50,7 +50,7 @@ Adds nine tables. Every table:
 - `created_at` / `updated_at` (where mutable) with the existing `set_updated_at` trigger.
 - `deleted_at timestamptz nullable` for user-generated data.
 
-Tables (exact columns per `ERP_DATA_MODEL.md`):
+Tables (exact columns per `docs/architecture/ERP_DATA_MODEL.md`):
 
 | # | Table | Notes |
 |---|---|---|
@@ -288,7 +288,7 @@ Every function:
 **AC:**
 - [ ] `/clients` shows real data when logged in, empty state when no clients exist.
 - [ ] No reference to `DATA.clientsList` remains in `clients/page.tsx`.
-- [ ] Loading, empty, error states all render (per `personas/PERSONA_UX.md`).
+- [ ] Loading, empty, error states all render (per `docs/personas/PERSONA_UX.md`).
 
 ---
 
@@ -337,7 +337,7 @@ Grep-based or ESLint, doesn't matter — make it red in CI.
 
 **AC:**
 - [ ] Each guard tested with an intentional violation in a throwaway branch — CI must fail.
-- [ ] Guards documented in `ANTI_PATTERNS.md` next to the rules they enforce.
+- [ ] Guards documented in `docs/architecture/ANTI_PATTERNS.md` next to the rules they enforce.
 
 ---
 
