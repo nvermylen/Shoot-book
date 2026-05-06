@@ -2,7 +2,7 @@
 
 > **Phase:** 1 — Foundation (Lead → Booking → Comms loop)
 > **Sprint:** 2 of ~4 in Phase 1
-> **Tickets:** LENS-002 through LENS-013 (12 tickets)
+> **Tickets:** LENS-003 through LENS-014 (12 tickets)
 > **Sprint goal:** Every ERP table the cradle needs + every piece of AI plumbing the first agent will sit on. **No LLM calls. No Gmail. No agent prompts. No new UI.**
 > **Why this sprint exists:** LeadAgent (Sprint 3) cannot ship without these foundations. Building them inside Sprint 3 would conflate "did the agent work" with "did the gateway work" and make eval-in-isolation impossible.
 
@@ -39,7 +39,7 @@ By end of sprint, the following are true:
 
 ## Tickets
 
-### LENS-002 — Migration 002: Phase 1 ERP entities
+### LENS-003 — Migration 002: Phase 1 ERP entities
 
 **File:** `supabase/migrations/migration_002_phase1_erp.sql`
 
@@ -105,7 +105,7 @@ create trigger booking_location_same_category
 
 ---
 
-### LENS-003 — Type definitions for ERP entities
+### LENS-004 — Type definitions for ERP entities
 
 **Files:**
 - `src/types/erp.ts` — TypeScript interfaces for all 10 new entities + the 3 from migration 001.
@@ -121,7 +121,7 @@ Every entity type uses `snake_case` columns matching the DB. No `any`. Status en
 
 ---
 
-### LENS-004 — Token encryption module
+### LENS-005 — Token encryption module
 
 **File:** `src/lib/crypto/tokens.ts`
 
@@ -143,7 +143,7 @@ export function decryptToken(ciphertext: Buffer, keyVersion: number): string;
 
 ---
 
-### LENS-005 — Domain event bus
+### LENS-006 — Domain event bus
 
 **File:** `src/lib/events/bus.ts`
 
@@ -168,7 +168,7 @@ export function subscribe<T extends DomainEvent>(
 
 ---
 
-### LENS-006 — Tool registry
+### LENS-007 — Tool registry
 
 **File:** `src/lib/ai/tools/registry.ts`
 
@@ -203,7 +203,7 @@ export function callTool(
 
 ---
 
-### LENS-007 — Gateway
+### LENS-008 — Gateway
 
 **File:** `src/lib/ai/gateway.ts`
 
@@ -236,7 +236,7 @@ Responsibilities:
 
 ---
 
-### LENS-008 — Eval harness skeleton
+### LENS-009 — Eval harness skeleton
 
 **Files:**
 - `src/lib/ai/evals/runner.ts` — runs a list of fixtures through the gateway in eval mode, asserts `actualOutput` matches `expectedOutput` (deep equal for now; richer matchers later).
@@ -251,7 +251,7 @@ Sprint 2 ships the runner with one synthetic fixture (`agentId: 'test'`, hard-co
 
 ---
 
-### LENS-009 — ERP read/write modules (skeletons)
+### LENS-010 — ERP read/write modules (skeletons)
 
 **Files:**
 - `src/lib/erp/lead/index.ts` — exports `createLead`, `getLead`, `qualifyLead`, `convertLeadToClient`. Implementations call Supabase server client; auth check at every entry point. **No tool registration yet** — that's LeadAgent's responsibility in Sprint 3.
@@ -273,7 +273,7 @@ Every function:
 
 ---
 
-### LENS-010 — Wire `/clients` page off mocks (bonus, ship if time)
+### LENS-011 — Wire `/clients` page off mocks (bonus, ship if time)
 
 **Goal:** prove the ERP plumbing works end-to-end by replacing `mock/data.ts` for one screen.
 
@@ -292,7 +292,7 @@ Every function:
 
 ---
 
-### LENS-011 — Update CLAUDE.md and architecture docs
+### LENS-012 — Update CLAUDE.md and architecture docs
 
 **Files touched:**
 - `CLAUDE.md` — Current Build State updated; add `npm run evals` and `npm run typecheck` to dev commands.
@@ -305,7 +305,7 @@ Every function:
 
 ---
 
-### LENS-012 — RLS verification test suite
+### LENS-013 — RLS verification test suite
 
 **File:** `tests/rls.test.ts`
 
@@ -324,7 +324,7 @@ This is the test that catches the most expensive class of bug in Lens. Don't ski
 
 ---
 
-### LENS-013 — ESLint / CI guards
+### LENS-014 — ESLint / CI guards
 
 Add CI checks (failing the build) for the anti-patterns most likely to be violated this sprint:
 
@@ -346,15 +346,15 @@ Grep-based or ESLint, doesn't matter — make it red in CI.
 1. **The `booking_location` same-category trigger.** Test it both for inserts and updates. Easy to forget update path.
 2. **Token encryption rotation.** You will be tempted to hardcode a single key. Don't. The `key_version` column is cheap; back-filling later is not.
 3. **Eval harness feels premature.** It will. Build it anyway. The first time you ship a prompt change without an eval is the day a customer-facing regression makes it to production.
-4. **`comm_log` append-only enforcement at the RLS layer.** Easy to write a "view your own rows" policy that accidentally allows updates. Test for the negative case explicitly — that's why LENS-012 is its own ticket.
+4. **`comm_log` append-only enforcement at the RLS layer.** Easy to write a "view your own rows" policy that accidentally allows updates. Test for the negative case explicitly — that's why LENS-013 is its own ticket.
 
 ---
 
 ## Leading Metric
 
-**Single number:** number of new tables that pass the full RLS test matrix in LENS-012. Target: 10/10.
+**Single number:** number of new tables that pass the full RLS test matrix in LENS-013. Target: 10/10.
 
-Not "PRs merged." Not "tickets closed." If LENS-012 is green, the sprint succeeded. If it's red, nothing else matters.
+Not "PRs merged." Not "tickets closed." If LENS-013 is green, the sprint succeeded. If it's red, nothing else matters.
 
 ---
 

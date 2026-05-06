@@ -55,7 +55,7 @@ Next ticket:         LENS-003
 Last migration:      migration_001_photographer_and_clients.sql
 Next migration:      migration_002_phase1_erp.sql
 Last PR branch:      (LENS-001 squash-merged to main)
-Active feature spec: features/Sprint2_ERP_AI_Infrastructure_Feature_Spec.md
+Active feature spec: docs/features/Phase1/Sprint2_ERP_AI_Infrastructure.md
 ```
 
 ---
