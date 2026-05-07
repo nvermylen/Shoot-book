@@ -287,7 +287,7 @@ Every communication — sent or received, automated or manual. The append-only l
 A series of templated messages tied to a trigger (booking created, session approaching, etc.). Sequences are templates; state tracks per-client progression.
 
 `comm_sequence`:
-- `id, photographer_id, name, trigger, steps (jsonb), is_active`
+- `id, photographer_id, name, trigger_event, steps (jsonb), is_active`
 
 `comm_sequence_state`:
 - `id, sequence_id, client_id, booking_id, current_step, last_sent_at, status ('active' | 'paused' | 'completed' | 'cancelled')`

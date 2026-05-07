@@ -287,7 +287,8 @@ create trigger contract_updated_at
 -- deferred FK: booking.contract_id → contract
 alter table booking
   add constraint booking_contract_id_fkey
-  foreign key (contract_id) references contract(id);
+  foreign key (contract_id) references contract(id)
+  on delete set null;
 
 -- ============================================================
 -- comm_sequence
@@ -296,7 +297,7 @@ create table comm_sequence (
   id uuid primary key default gen_random_uuid(),
   photographer_id uuid not null references photographer(id) on delete cascade,
   name text not null,
-  "trigger" text not null,
+  trigger_event text not null,
   steps jsonb not null,
   is_active bool not null default true,
   created_at timestamptz not null default now(),
@@ -484,8 +485,7 @@ create table agent_tool_call_log (
   status text not null,
   latency_ms int,
   prompt_version text,
-  called_at timestamptz not null default now(),
-  created_at timestamptz not null default now()
+  called_at timestamptz not null default now()
 );
 
 alter table agent_tool_call_log enable row level security;

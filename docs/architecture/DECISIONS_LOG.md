@@ -13,6 +13,28 @@
 
 ---
 
+### LENS-D-009 — booking.status defaults to 'tentative'
+**Date:** 2026-05-06
+**Phase:** Phase 1 | Sprint 2
+**Status:** ✅ Active
+
+**Decision:** `booking.status` has a SQL default of `'tentative'`. A booking exists before contract signed + deposit paid, so tentative is the correct initial state per the domain glossary lifecycle: tentative → confirmed (on contract signed + deposit paid).
+
+**Rationale:** The ERP data model doesn't specify a default, but the domain lifecycle makes tentative the only reasonable initial value. Forcing callers to specify would just mean every INSERT passes `'tentative'` anyway.
+
+---
+
+### LENS-D-008 — comm_sequence column renamed from "trigger" to trigger_event
+**Date:** 2026-05-06
+**Phase:** Phase 1 | Sprint 2
+**Status:** ✅ Active
+
+**Decision:** Renamed `comm_sequence.trigger` to `trigger_event`. `trigger` is a PostgreSQL keyword that requires double-quoting in every context — queries, TypeScript types, Supabase client calls, test fixtures. `trigger_event` reads identically and requires zero quoting.
+
+**Rationale:** Painless to fix now; 10-PR ordeal in three months. ERP_DATA_MODEL.md updated to match.
+
+---
+
 ### LENS-D-007 — Removed chaining-mode workflow from playbook
 **Date:** 2026-05-06
 **Phase:** Phase 1 | Sprint 2
@@ -230,6 +252,9 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-009 | booking.status defaults to 'tentative' | 2026-05-06 | Schema | ✅ Active |
+| LENS-D-008 | comm_sequence column renamed to trigger_event | 2026-05-06 | Schema | ✅ Active |
+| LENS-D-007 | Removed chaining-mode workflow | 2026-05-06 | Process | ✅ Active |
 | LENS-D-006 | Working name "Lens" placeholder | 2026-05-04 | Setup | ⚠️ Under Review |
 | LENS-D-005 | Six agents, phased | 2026-05-04 | Architecture | ✅ Active |
 | LENS-D-004 | ERP is source of truth | 2026-05-04 | Architecture | ✅ Active |
