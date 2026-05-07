@@ -50,11 +50,11 @@ If a Claude Code question can be answered by these five files, the answer is in 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
 Current sprint:      Sprint 2 — ERP completion + AI infrastructure
-Last ticket:         LENS-003  (migration 002 — Phase 1 ERP entities)
-Next ticket:         LENS-004
+Last ticket:         LENS-005  (token encryption module + tests)
+Next ticket:         LENS-006
 Last migration:      migration_002_phase1_erp.sql
 Next migration:      (none planned — LENS-004 through LENS-014 are TS only)
-Last PR branch:      LENS-003-phase1-erp-tables
+Last PR branch:      LENS-005-token-encryption
 Active feature spec: docs/features/Phase1/Sprint2_ERP_AI_Infrastructure.md
 ```
 
