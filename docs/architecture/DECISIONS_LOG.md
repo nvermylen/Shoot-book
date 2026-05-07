@@ -18,9 +18,24 @@
 **Phase:** Phase 1 | Sprint 2
 **Status:** ✅ Active
 
-**Decision:** `booking.status` has a SQL default of `'tentative'`. A booking exists before contract signed + deposit paid, so tentative is the correct initial state per the domain glossary lifecycle: tentative → confirmed (on contract signed + deposit paid).
+**Decision:** `booking.status` has a SQL default of `'tentative'`.
 
-**Rationale:** The ERP data model doesn't specify a default, but the domain lifecycle makes tentative the only reasonable initial value. Forcing callers to specify would just mean every INSERT passes `'tentative'` anyway.
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Default `'tentative'` (chosen) | Matches domain lifecycle — a booking exists before contract signed + deposit paid; every `INSERT` would pass `'tentative'` anyway | ERP data model doesn't specify a default, so this is a migration-level judgment call |
+| No default, require caller to specify | Explicit; no hidden state | Adds ceremony with zero flexibility — tentative is the only valid initial state |
+
+**Choice:** Default `'tentative'`.
+
+**Rationale:** The booking state machine in DOMAIN_GLOSSARY.md defines the lifecycle: `tentative` → `confirmed` (on contract signed + deposit paid) → `completed` (session date passed) or `cancelled`. A booking can't start as `confirmed` (nothing is signed), `completed` (nothing happened), or `cancelled` (nothing to cancel). `tentative` is the only valid initial value, so forcing callers to specify it is ceremony without benefit.
+
+**Implications:**
+- `INSERT INTO booking` without specifying status produces a tentative booking.
+- Application code should transition to `confirmed` only after contract + deposit conditions are met.
+- If a future status (e.g., `draft`) emerges that precedes `tentative`, the default changes and existing code that relies on it must be audited.
+
+**Revisit Trigger:** If a booking creation flow emerges where `tentative` is not the correct initial state.
 
 ---
 
@@ -29,9 +44,25 @@
 **Phase:** Phase 1 | Sprint 2
 **Status:** ✅ Active
 
-**Decision:** Renamed `comm_sequence.trigger` to `trigger_event`. `trigger` is a PostgreSQL keyword that requires double-quoting in every context — queries, TypeScript types, Supabase client calls, test fixtures. `trigger_event` reads identically and requires zero quoting.
+**Decision:** Renamed `comm_sequence.trigger` to `trigger_event`.
 
-**Rationale:** Painless to fix now; 10-PR ordeal in three months. ERP_DATA_MODEL.md updated to match.
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| `trigger_event` (chosen) | Describes what the column holds (the event that fires the sequence); avoids reserved word; reads naturally alongside values like `'booking.created'`, `'session.approaching'` | Slightly longer than the ERP model's shorthand |
+| `trigger_type` | Short; familiar naming pattern | Implies a category/enum, not a specific event; `type` is also an overloaded word in TypeScript contexts |
+| `trigger_name` | Short | Implies a human-readable label, not a machine-routable event identifier |
+| `"trigger"` (quoted) | Matches ERP model exactly | Every query, TypeScript type, Supabase client call, and test fixture must double-quote the column forever; grep for the column name also matches PostgreSQL's `CREATE TRIGGER` syntax |
+
+**Choice:** `trigger_event`.
+
+**Rationale:** The column stores the domain event that causes a comm sequence to fire (e.g., `'booking.created'`, `'session.approaching'`, `'payment.overdue'`). `trigger_event` is the most precise name for that semantic — it's an event, not a type or a label. The reserved-word problem with `trigger` makes this a zero-cost rename now vs. a codebase-wide find-and-replace later. ERP_DATA_MODEL.md updated to match.
+
+**Implications:**
+- All code referencing this column uses `trigger_event` unquoted.
+- Feature specs and CC prompts should use `trigger_event`, not `trigger`.
+
+**Revisit Trigger:** Never — naming is locked once the first comm_sequence row is written.
 
 ---
 
