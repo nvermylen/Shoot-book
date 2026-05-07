@@ -13,6 +13,59 @@
 
 ---
 
+### LENS-D-009 — booking.status defaults to 'tentative'
+**Date:** 2026-05-06
+**Phase:** Phase 1 | Sprint 2
+**Status:** ✅ Active
+
+**Decision:** `booking.status` has a SQL default of `'tentative'`.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Default `'tentative'` (chosen) | Matches domain lifecycle — a booking exists before contract signed + deposit paid; every `INSERT` would pass `'tentative'` anyway | ERP data model doesn't specify a default, so this is a migration-level judgment call |
+| No default, require caller to specify | Explicit; no hidden state | Adds ceremony with zero flexibility — tentative is the only valid initial state |
+
+**Choice:** Default `'tentative'`.
+
+**Rationale:** The booking state machine in DOMAIN_GLOSSARY.md defines the lifecycle: `tentative` → `confirmed` (on contract signed + deposit paid) → `completed` (session date passed) or `cancelled`. A booking can't start as `confirmed` (nothing is signed), `completed` (nothing happened), or `cancelled` (nothing to cancel). `tentative` is the only valid initial value, so forcing callers to specify it is ceremony without benefit.
+
+**Implications:**
+- `INSERT INTO booking` without specifying status produces a tentative booking.
+- Application code should transition to `confirmed` only after contract + deposit conditions are met.
+- If a future status (e.g., `draft`) emerges that precedes `tentative`, the default changes and existing code that relies on it must be audited.
+
+**Revisit Trigger:** If a booking creation flow emerges where `tentative` is not the correct initial state.
+
+---
+
+### LENS-D-008 — comm_sequence column renamed from "trigger" to trigger_event
+**Date:** 2026-05-06
+**Phase:** Phase 1 | Sprint 2
+**Status:** ✅ Active
+
+**Decision:** Renamed `comm_sequence.trigger` to `trigger_event`.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| `trigger_event` (chosen) | Describes what the column holds (the event that fires the sequence); avoids reserved word; reads naturally alongside values like `'booking.created'`, `'session.approaching'` | Slightly longer than the ERP model's shorthand |
+| `trigger_type` | Short; familiar naming pattern | Implies a category/enum, not a specific event; `type` is also an overloaded word in TypeScript contexts |
+| `trigger_name` | Short | Implies a human-readable label, not a machine-routable event identifier |
+| `"trigger"` (quoted) | Matches ERP model exactly | Every query, TypeScript type, Supabase client call, and test fixture must double-quote the column forever; grep for the column name also matches PostgreSQL's `CREATE TRIGGER` syntax |
+
+**Choice:** `trigger_event`.
+
+**Rationale:** The column stores the domain event that causes a comm sequence to fire (e.g., `'booking.created'`, `'session.approaching'`, `'payment.overdue'`). `trigger_event` is the most precise name for that semantic — it's an event, not a type or a label. The reserved-word problem with `trigger` makes this a zero-cost rename now vs. a codebase-wide find-and-replace later. ERP_DATA_MODEL.md updated to match.
+
+**Implications:**
+- All code referencing this column uses `trigger_event` unquoted.
+- Feature specs and CC prompts should use `trigger_event`, not `trigger`.
+
+**Revisit Trigger:** Never — naming is locked once the first comm_sequence row is written.
+
+---
+
 ### LENS-D-007 — Removed chaining-mode workflow from playbook
 **Date:** 2026-05-06
 **Phase:** Phase 1 | Sprint 2
@@ -230,6 +283,9 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-009 | booking.status defaults to 'tentative' | 2026-05-06 | Schema | ✅ Active |
+| LENS-D-008 | comm_sequence column renamed to trigger_event | 2026-05-06 | Schema | ✅ Active |
+| LENS-D-007 | Removed chaining-mode workflow | 2026-05-06 | Process | ✅ Active |
 | LENS-D-006 | Working name "Lens" placeholder | 2026-05-04 | Setup | ⚠️ Under Review |
 | LENS-D-005 | Six agents, phased | 2026-05-04 | Architecture | ✅ Active |
 | LENS-D-004 | ERP is source of truth | 2026-05-04 | Architecture | ✅ Active |
