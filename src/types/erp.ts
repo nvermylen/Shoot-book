@@ -1,3 +1,5 @@
+import type { AgentId } from './agent';
+
 // ---------------------------------------------------------------------------
 // Status / enum union types — values match CHECK constraints in migrations
 // ---------------------------------------------------------------------------
@@ -195,7 +197,7 @@ export interface CommSequence {
   id: string;
   photographer_id: string;
   name: string;
-  trigger_event: string;
+  trigger_event: string; // domain event type or scheduled-trigger key
   steps: unknown;
   is_active: boolean;
   created_at: string;
@@ -247,11 +249,11 @@ export interface IntegrationCredentials {
 export interface AgentToolCallLog {
   id: string;
   photographer_id: string;
-  agent_id: string;
+  agent_id: AgentId;
   tool_name: string;
   input_hash: string;
   output_hash: string | null;
-  status: string;
+  status: 'ok' | 'error';
   latency_ms: number | null;
   prompt_version: string | null;
   called_at: string;
