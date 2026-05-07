@@ -6,6 +6,8 @@
 > **When to update**: Before any migration that adds, removes, or fundamentally changes an entity. Before any agent gets new write access. Before any feature that introduces a new business concept.
 >
 > **Rule**: If a new business concept doesn't fit any of the entities below, the answer is not "stuff it into `metadata jsonb`." The answer is "discuss whether it deserves an entity, then update this file, then write the migration."
+>
+> **Doc-vs-migration policy**: the migration is canonical. When this doc and the applied migration disagree, the migration is correct and this doc needs updating. Doc drift is fixed in cleanup PRs, not as part of feature work.
 
 ---
 
@@ -178,7 +180,7 @@ Signed service agreement.
 - `signed_at` (timestamptz, nullable)
 - `signature_image_url` (text, nullable)
 - `signed_ip` (inet, nullable)
-- `created_at`, `updated_at`
+- `created_at`, `updated_at`, `deleted_at` (soft delete)
 
 **RLS:** photographer-scoped via booking.
 
@@ -297,8 +299,17 @@ A series of templated messages tied to a trigger (booking created, session appro
 ---
 
 ### `integration_credentials`
-Encrypted OAuth tokens per integration per photographer.
-- `id, photographer_id, service ('gmail' | 'quickbooks' | 'stripe' | 'calendar' | 'storage'), access_token (encrypted), refresh_token (encrypted), expires_at, scope (text[]), created_at, updated_at`
+Encrypted OAuth tokens per integration per photographer. Tokens stored as ciphertext per `SECURITY.md`; `key_version` supports future encryption-key rotation.
+- `id` (uuid PK)
+- `photographer_id` (uuid FK)
+- `service` (text — 'gmail' | 'quickbooks' | 'stripe' | 'calendar' | 'storage')
+- `access_token_ciphertext` (bytea, not null) — AES-256-GCM encrypted
+- `refresh_token_ciphertext` (bytea, nullable)
+- `key_version` (int, not null, default 1)
+- `expires_at` (timestamptz, nullable)
+- `scope` (text[], nullable)
+- `created_at`, `updated_at`
+- unique on `(photographer_id, service)`
 
 **RLS:** photographer-scoped, never returned to client.
 
