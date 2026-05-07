@@ -12,6 +12,13 @@ export class TokenDecryptError extends Error {
   }
 }
 
+export class TokenConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TokenConfigError';
+  }
+}
+
 function getKeyForVersion(version: number): Buffer {
   if (version !== CURRENT_KEY_VERSION) {
     throw new TokenDecryptError(
@@ -21,12 +28,12 @@ function getKeyForVersion(version: number): Buffer {
 
   const raw = process.env.TOKEN_ENCRYPTION_KEY;
   if (!raw) {
-    throw new Error('TOKEN_ENCRYPTION_KEY is not set');
+    throw new TokenConfigError('TOKEN_ENCRYPTION_KEY is not set');
   }
 
   const key = Buffer.from(raw, 'base64');
   if (key.length !== 32) {
-    throw new Error('TOKEN_ENCRYPTION_KEY must decode to exactly 32 bytes');
+    throw new TokenConfigError('TOKEN_ENCRYPTION_KEY must decode to exactly 32 bytes');
   }
 
   return key;
