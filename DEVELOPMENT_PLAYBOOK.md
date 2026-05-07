@@ -1,7 +1,7 @@
 # DEVELOPMENT_PLAYBOOK.md
 ## Lens — Master Operating Doc
 
-> **Purpose**: How Lens is built, end to end. Methodology, file workflow, ticket conventions, and feature chaining. This is what you `/init` against when seeding Claude Code with full project context.
+> **Purpose**: How Lens is built, end to end. Methodology, file workflow, and ticket conventions. This is what you `/init` against when seeding Claude Code with full project context.
 
 ---
 
@@ -27,15 +27,11 @@ IDEATE (the why)
     ↓
 PHASE PLAN (3–8 features, sprint table, dep map, risks)
     ↓
-FEATURE SPEC per Epic (problem → solution → PRs with prompts)
+FEATURE SPEC per Sprint (problem → solution → PRs with ACs)
     ↓
-CC PROMPT per Feature (paste into CC, or stage for chaining)
+CC PROMPT per Feature (paste into CC)
     ↓
-BUILD
-   ├── Standard mode: paste prompt, CC executes, owner reviews
-   └── Chaining mode: ORCHESTRATOR processes queue, writes gate reports + SQL manifests
-    ↓
-GATES + SQL MANIFESTS (chaining only — structured handoff)
+BUILD (paste prompt, CC executes, owner reviews each PR)
     ↓
 UAT (validate against Acceptance Criteria)
     ↓
@@ -81,7 +77,7 @@ NEXT PHASE
 |----------|---------|
 | `PHASE_TEMPLATE.md` | Copy → `phases/Phase[N]_Implementation_Plan.md` |
 | `FEATURE_SPEC_TEMPLATE.md` | Copy → `docs/features/Phase[N]/Sprint[N]_[Name].md` |
-| `CC_PROMPT_TEMPLATE.md` | Copy → `prompts/[WeekN]_CC_Prompt.md` (or to `[phaseN]/cc-prompts/` for chaining) |
+| `CC_PROMPT_TEMPLATE.md` | Copy → `prompts/[WeekN]_CC_Prompt.md` |
 
 ---
 
@@ -128,21 +124,6 @@ lens/
 └── tests/
 ```
 
-### Per-phase chaining directory (optional, used for batch execution)
-
-```
-phaseN/
-├── features/
-│   ├── queue/                      ← specs waiting (numbered 01–NN)
-│   ├── active/                     ← currently building (max 1)
-│   └── completed/                  ← done
-├── cc-prompts/
-│   ├── ORCHESTRATOR.md             ← paste once to start chain
-│   └── 01_[name]_cc.md             ← per-feature prompts
-├── gates/                          ← CC writes gate reports
-└── sql-manifests/                  ← CC writes SQL handoffs
-```
-
 ---
 
 ## 5. Ticket Conventions
@@ -161,7 +142,7 @@ Tickets are created in Linear before CC executes the corresponding CC Prompt.
 
 ---
 
-## 6. Workflow — Standard Mode (one feature at a time)
+## 6. Feature Workflow
 
 ```
 1. Phase plan exists in phases/Phase[N]_Implementation_Plan.md
@@ -182,55 +163,7 @@ Tickets are created in Linear before CC executes the corresponding CC Prompt.
 
 ---
 
-## 7. Workflow — Feature Chaining Mode (batch execution)
-
-For when multiple features can be queued and executed unattended.
-
-```
-1. Draft specs for all queued features → numbered 01_, 02_, … in phaseN/features/queue/
-2. Draft CC prompts for each → numbered 01_, 02_, … in phaseN/cc-prompts/
-3. Write phaseN/cc-prompts/ORCHESTRATOR.md (template below)
-4. Paste ORCHESTRATOR.md into Claude Code — once
-5. CC processes the queue in order:
-   - Reads next spec from features/queue/
-   - Moves it to features/active/
-   - Implements it
-   - Writes gate report → gates/[NN]_[FeatureName]_GATE.md (PASSED or BLOCKED)
-   - Writes SQL manifest → sql-manifests/[NN]_[FeatureName]_sql.md
-   - Moves spec to features/completed/
-   - Stops if BLOCKED; otherwise proceeds to [NN+1]
-6. Owner reviews gate reports, applies SQL manifests, merges PRs in order
-7. Update CLAUDE.md current build state after the chain run
-```
-
-### ORCHESTRATOR.md template
-
-```markdown
-# Orchestrator — Phase [N] Chain Run
-
-You are processing a queue of feature specs in order. For each item:
-
-1. Read the next numbered spec from phaseN/features/queue/.
-2. Move it to phaseN/features/active/.
-3. Implement it following the corresponding cc-prompt at phaseN/cc-prompts/[NN]_*.md.
-4. Write a gate report to phaseN/gates/[NN]_*_GATE.md.
-   - If PASSED: include "STATUS: PASSED" and proceed.
-   - If BLOCKED: include "STATUS: BLOCKED" with options surfaced. STOP the chain.
-5. Write a SQL manifest to phaseN/sql-manifests/[NN]_*_sql.md (if migrations were generated).
-6. Move the spec from active/ to completed/.
-7. Proceed to next item in queue/.
-
-Before starting, read CLAUDE.md, docs/architecture/ANTI_PATTERNS.md, and docs/architecture/AGENT_ARCHITECTURE.md.
-
-Stop the chain on:
-- BLOCKED gate report.
-- Migration generated that requires owner-side application before further work depends on it.
-- Any auth, security, or schema decision not covered by the spec.
-```
-
----
-
-## 8. Daily / Sprint Cadence
+## 7. Daily / Sprint Cadence
 
 ### Sprint start checklist
 - [ ] Update `CLAUDE.md` Current Build State (last ticket, last migration).
@@ -255,7 +188,7 @@ Stop the chain on:
 
 ---
 
-## 9. Quality Gates (Non-Negotiable)
+## 8. Quality Gates (Non-Negotiable)
 
 ```bash
 npx tsc --noEmit    # zero errors
@@ -273,7 +206,7 @@ Plus the agent-on-ERP gates:
 
 ---
 
-## 10. When to Update Each File
+## 9. When to Update Each File
 
 | File | Update when |
 |------|-------------|
@@ -290,7 +223,7 @@ Plus the agent-on-ERP gates:
 
 ---
 
-## 11. The Bar
+## 10. The Bar
 
 Lens is built to the standard implied by these documents — not below it. Specifically:
 
