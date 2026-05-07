@@ -13,6 +13,31 @@
 
 ---
 
+### LENS-D-010 — Token encryption key validation is per-call, not at module load
+**Date:** 2026-05-06
+**Phase:** Phase 1 | Sprint 2
+**Status:** ✅ Active
+
+**Decision:** `getKeyForVersion()` validates `TOKEN_ENCRYPTION_KEY` on every encrypt/decrypt call rather than caching at module load.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Per-call validation (chosen) | Tests can swap env vars between cases without module reload; simpler code; no global mutable state | Redundant base64 decode + length check on every call |
+| Module-load cache in `Map<number, Buffer>` | Fail-fast at server startup; zero per-call overhead | Tests need `vi.resetModules()` or dynamic imports to swap keys; adds module-level mutable state |
+
+**Choice:** Per-call validation.
+
+**Rationale:** The cost is negligible (one base64 decode of 32 bytes). The benefit is test ergonomics — the test suite swaps `TOKEN_ENCRYPTION_KEY` between cases to test wrong-key and missing-key scenarios. A module-load cache would require resetting module state per test, adding complexity without meaningful performance gain (OAuth token encrypt/decrypt is not a hot path).
+
+**Implications:**
+- Misconfiguration surfaces at first encrypt/decrypt call, not at server boot.
+- If fail-fast at startup becomes important (e.g., health check endpoint), add an explicit `validateTokenConfig()` export that routes call on startup.
+
+**Revisit Trigger:** If token encrypt/decrypt becomes a hot path (unlikely — it's per-OAuth-refresh, not per-request).
+
+---
+
 ### LENS-D-009 — booking.status defaults to 'tentative'
 **Date:** 2026-05-06
 **Phase:** Phase 1 | Sprint 2
@@ -283,6 +308,7 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-010 | Token key validation per-call, not module-load | 2026-05-06 | Security | ✅ Active |
 | LENS-D-009 | booking.status defaults to 'tentative' | 2026-05-06 | Schema | ✅ Active |
 | LENS-D-008 | comm_sequence column renamed to trigger_event | 2026-05-06 | Schema | ✅ Active |
 | LENS-D-007 | Removed chaining-mode workflow | 2026-05-06 | Process | ✅ Active |

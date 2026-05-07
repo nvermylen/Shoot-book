@@ -193,17 +193,22 @@
 
 ## Category 7: Claude Code Execution
 
-### ❌ 33. Proceeding past a foundational decision without flagging it
+### ❌ 33. Shipping security/crypto code without tests in the same PR
+**What:** A module touching encryption, auth, token handling, or credential storage is merged without a co-located test file.
+**Why:** Security code is binary — it either works or it's a vulnerability. "Follow-up ticket for tests" means the code ships unverified. The Sprint 2 spec required three test ACs for LENS-005; they weren't written. This rule prevents recurrence.
+**Instead:** Security/crypto modules and any ticket with explicit test acceptance criteria must include the test file in the same PR. The PR is incomplete without it.
+
+### ❌ 34. Proceeding past a foundational decision without flagging it
 **What:** CC makes an architectural call (PK type, API contract shape, agent boundary) without surfacing it.
 **Why:** Small foundational decisions have huge downstream consequences. Wrong PK type in PR 1 = painful migration in PR 6.
 **Instead:** When CC hits a decision not covered by the spec, stop. State the options and tradeoffs. Don't guess on foundations.
 
-### ❌ 34. Implementing scope not in the spec
+### ❌ 35. Implementing scope not in the spec
 **What:** "While I'm here" additions — extra fields, additional endpoints, UI improvements not specified.
 **Why:** Scope creep from inside CC inflates PRs, ships untested code, and shifts the implementation away from the spec QA validates.
 **Instead:** Implement exactly the spec. Log out-of-scope observations as `// TODO: LENS-NNN — [observation]`.
 
-### ❌ 35. Not reading existing files before writing new ones
+### ❌ 36. Not reading existing files before writing new ones
 **What:** Writing `lib/foo.ts` without reading `lib/bar.ts` to learn the pattern.
 **Why:** Duplicate utilities, inconsistent patterns, broken imports. The 20th file in a codebase must look like the first.
 **Instead:** Read the most similar existing file before writing any new one. Match imports, error patterns, return-type conventions.
