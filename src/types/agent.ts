@@ -1,3 +1,5 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 export type AgentId =
   | 'lead'
   | 'booking'
@@ -5,6 +7,12 @@ export type AgentId =
   | 'billing'
   | 'expense'
   | 'delivery';
+
+export interface ToolContext {
+  agentId: AgentId;
+  photographerId: string;
+  supabase: SupabaseClient;
+}
 
 export interface ToolCall {
   tool_name: string;

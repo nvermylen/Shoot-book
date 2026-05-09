@@ -13,6 +13,31 @@
 
 ---
 
+### LENS-D-012 — Permission rejections not logged to agent_tool_call_log
+**Date:** 2026-05-09
+**Phase:** Phase 1 | Sprint 2
+**Status:** ✅ Active
+
+**Decision:** When `callTool` rejects a call due to `agentId` not being in `allowedAgents`, the rejection is logged to `console.error` but NOT written to the `agent_tool_call_log` table. The function throws `ToolPermissionError` immediately.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Don't log to DB, log to console.error (chosen) | Clean separation: `agent_tool_call_log` contains actual tool calls (successful or failed), not refused calls; misuse is still observable in server logs | Permission abuse won't show up in photographer-facing audit views built on `agent_tool_call_log` |
+| Log to DB with `status: 'permission_denied'` | Misuse visible in audit table; easy to query | Conflates "this tool was called and failed" with "this tool was never called"; pollutes the log with non-calls; `status` column in migration is free-text but semantically intended for `ok`/`error` of actual calls |
+
+**Choice:** Console.error only; no DB row.
+
+**Rationale:** A permission rejection is not a tool call — it's a refused tool call. The `agent_tool_call_log` table is an audit log of what tools actually executed (or attempted execution and failed). A permission check fires before the handler runs, before input is hashed, before any work happens. Logging it to the same table muddies the semantics. `console.error('tool_permission_rejected', { tool_name, agent_id })` makes misuse observable in server logs, matching the event bus precedent where handler errors go to `console.error` rather than a separate DB table.
+
+**Implications:**
+- Permission-rejection monitoring requires searching server logs, not querying `agent_tool_call_log`.
+- If a security audit requires queryable permission rejection history, add a separate `agent_security_event_log` table — don't overload the tool call log.
+
+**Revisit Trigger:** If permission rejections need to be queryable (e.g., for a security dashboard or rate-limiting misbehaving agents).
+
+---
+
 ### LENS-D-011 — Event bus is in-memory; durable queue deferred
 **Date:** 2026-05-06
 **Phase:** Phase 1 | Sprint 2
@@ -335,6 +360,7 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-012 | Permission rejections not in agent_tool_call_log | 2026-05-09 | Architecture | ✅ Active |
 | LENS-D-011 | Event bus in-memory; durable queue deferred | 2026-05-06 | Architecture | ✅ Active |
 | LENS-D-010 | Token key validation per-call, not module-load | 2026-05-06 | Security | ✅ Active |
 | LENS-D-009 | booking.status defaults to 'tentative' | 2026-05-06 | Schema | ✅ Active |
