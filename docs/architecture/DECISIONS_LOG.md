@@ -13,6 +13,31 @@
 
 ---
 
+### LENS-D-013 — Gateway logs stdout-only for Sprint 2
+**Date:** 2026-05-09
+**Phase:** Phase 1 | Sprint 2
+**Status:** ✅ Active
+
+**Decision:** Gateway structured logs go to stdout only. No DB-backed log persistence table. Vercel's observability layer captures stdout.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Stdout only (chosen) | Zero new tables; Vercel captures it; no ANTI_PATTERNS #37 surface area; sufficient for single-photographer design-partner phase | Not queryable without Vercel log search; no long-term retention guarantees |
+| DB-backed `gateway_call_log` table | Queryable; durable; supports analytics dashboards | New table + migration; every write needs `{ error }` handling per ANTI_PATTERNS #37; premature for Phase 1 |
+
+**Choice:** Stdout only.
+
+**Rationale:** Phase 1 serves one photographer. Gateway call volume is low (tens per day). Vercel's log retention is sufficient for debugging. Adding a DB table creates a new surface for the silent-write-failure bug that hit LENS-006 and LENS-007 (ANTI_PATTERNS #37). The analytics benefit doesn't justify the complexity until multiple photographers are active.
+
+**Implications:**
+- Gateway call analysis requires Vercel log search, not SQL queries.
+- If DB persistence is added later, each write must check `{ error }` and either throw or `console.error`, matching `writeLogRow` in the tool registry.
+
+**Revisit Trigger:** When analytics on gateway calls (cost tracking, latency percentiles, per-agent token budget) becomes a product requirement.
+
+---
+
 ### LENS-D-012 — Permission rejections not logged to agent_tool_call_log
 **Date:** 2026-05-09
 **Phase:** Phase 1 | Sprint 2
@@ -360,6 +385,7 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-013 | Gateway logs stdout-only for Sprint 2 | 2026-05-09 | Architecture | ✅ Active |
 | LENS-D-012 | Permission rejections not in agent_tool_call_log | 2026-05-09 | Architecture | ✅ Active |
 | LENS-D-011 | Event bus in-memory; durable queue deferred | 2026-05-06 | Architecture | ✅ Active |
 | LENS-D-010 | Token key validation per-call, not module-load | 2026-05-06 | Security | ✅ Active |
