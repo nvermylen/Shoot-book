@@ -13,6 +13,33 @@
 
 ---
 
+### LENS-D-011 — Event bus is in-memory; durable queue deferred
+**Date:** 2026-05-06
+**Phase:** Phase 1 | Sprint 2
+**Status:** ✅ Active
+
+**Decision:** The domain event bus (`src/lib/events/bus.ts`) is in-memory pub/sub. No durable queue, no retry, no dead-letter handling.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| In-memory pub/sub (chosen) | Zero infrastructure; testable with mocked Supabase; sufficient for Phase 1 agent count (3) and traffic (single photographer) | Events lost on crash; no retry for failed handlers; no ordering guarantees across server restarts |
+| Postgres-backed queue (SKIP LOCKED) | Durable; retryable; built on existing infra | Polling overhead; complex for 3 agents; over-engineered for design-partner scale |
+| External queue (SQS / Inngest / Trigger.dev) | Production-grade; retry + DLQ built in | New dependency; vendor lock; premature for Phase 1 |
+
+**Choice:** In-memory pub/sub.
+
+**Rationale:** Phase 1 serves one photographer (Morgan) with three agents. Event volume is low (tens per day). The bus persists every event to `domain_event_log` before dispatching to handlers, so even if a handler fails, the event record exists for manual replay. Durability and retry become load-bearing in Phase 2 when BillingAgent processes payment webhooks — that's the right trigger to upgrade.
+
+**Implications:**
+- Handler errors are swallowed (logged, not retried). A failed handler means the side effect didn't happen; the event is still in `domain_event_log`.
+- Subscribers are awaited sequentially — no parallel dispatch. Acceptable at Phase 1 scale.
+- No event ordering guarantees beyond single-publish scope.
+
+**Revisit Trigger:** Phase 2 kickoff, or the first time a handler failure causes data inconsistency in production.
+
+---
+
 ### LENS-D-010 — Token encryption key validation is per-call, not at module load
 **Date:** 2026-05-06
 **Phase:** Phase 1 | Sprint 2
@@ -308,6 +335,7 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-011 | Event bus in-memory; durable queue deferred | 2026-05-06 | Architecture | ✅ Active |
 | LENS-D-010 | Token key validation per-call, not module-load | 2026-05-06 | Security | ✅ Active |
 | LENS-D-009 | booking.status defaults to 'tentative' | 2026-05-06 | Schema | ✅ Active |
 | LENS-D-008 | comm_sequence column renamed to trigger_event | 2026-05-06 | Schema | ✅ Active |
