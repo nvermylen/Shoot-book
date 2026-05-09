@@ -67,8 +67,9 @@ describe('tool registry', () => {
       registerTestTool();
       const tool = getTool('test.echo');
       expect(tool).toBeDefined();
-      expect(tool!.name).toBe('test.echo'); // safe: checked on previous line
-      expect(tool!.allowedAgents).toEqual(['lead']);
+      if (!tool) return;
+      expect(tool.name).toBe('test.echo');
+      expect(tool.allowedAgents).toEqual(['lead']);
     });
 
     it('returns undefined for unregistered tool', () => {
@@ -281,6 +282,28 @@ describe('tool registry', () => {
       expect(row.input_hash).toHaveLength(64);
       expect(row.output_hash).toHaveLength(64);
       expect(row.input_hash).not.toBe(row.output_hash);
+    });
+
+    it('console.errors when log insert fails but still returns result', async () => {
+      registerTestTool();
+      const mock = mockSupabase({ error: { message: 'RLS violation' } });
+      const ctx: ToolContext = {
+        agentId: 'lead',
+        photographerId: 'phot-001',
+        supabase: mock.client,
+      };
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const result = await callTool('test.echo', { value: 'hello' }, ctx);
+
+      expect(result).toEqual({ result: 'hello' });
+      expect(errorSpy).toHaveBeenCalledWith('tool_call_log_write_failed', {
+        tool_name: 'test.echo',
+        agent_id: 'lead',
+        log_error_message: 'RLS violation',
+      });
+
+      errorSpy.mockRestore();
     });
 
     it('does not log prompt_version or called_at (DB defaults)', async () => {

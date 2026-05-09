@@ -51,6 +51,30 @@ function hashContent(content: unknown): string {
     .digest('hex');
 }
 
+async function writeLogRow(
+  ctx: ToolContext,
+  row: {
+    tool_name: string;
+    input_hash: string;
+    output_hash: string | null;
+    status: 'ok' | 'error';
+    latency_ms: number;
+  },
+): Promise<void> {
+  const { error } = await ctx.supabase.from('agent_tool_call_log').insert({
+    photographer_id: ctx.photographerId,
+    agent_id: ctx.agentId,
+    ...row,
+  });
+  if (error) {
+    console.error('tool_call_log_write_failed', {
+      tool_name: row.tool_name,
+      agent_id: ctx.agentId,
+      log_error_message: error.message,
+    });
+  }
+}
+
 export async function callTool(
   name: string,
   input: unknown,
@@ -74,6 +98,8 @@ export async function callTool(
     throw inputResult.error;
   }
 
+  // latency_ms measures handler + output validation only.
+  // Input validation/hashing excluded — they are registry overhead, not tool performance.
   const inputHash = hashContent(input);
   const start = performance.now();
 
@@ -82,16 +108,12 @@ export async function callTool(
   try {
     output = await tool.handler(inputResult.data, ctx);
   } catch (err) {
-    const latencyMs = Math.round(performance.now() - start);
-
-    await ctx.supabase.from('agent_tool_call_log').insert({
-      photographer_id: ctx.photographerId,
-      agent_id: ctx.agentId,
+    await writeLogRow(ctx, {
       tool_name: name,
       input_hash: inputHash,
       output_hash: null,
       status: 'error',
-      latency_ms: latencyMs,
+      latency_ms: Math.round(performance.now() - start),
     });
 
     throw err;
@@ -101,9 +123,7 @@ export async function callTool(
   const latencyMs = Math.round(performance.now() - start);
 
   if (!outputResult.success) {
-    await ctx.supabase.from('agent_tool_call_log').insert({
-      photographer_id: ctx.photographerId,
-      agent_id: ctx.agentId,
+    await writeLogRow(ctx, {
       tool_name: name,
       input_hash: inputHash,
       output_hash: null,
@@ -114,14 +134,10 @@ export async function callTool(
     throw outputResult.error;
   }
 
-  const outputHash = hashContent(output);
-
-  await ctx.supabase.from('agent_tool_call_log').insert({
-    photographer_id: ctx.photographerId,
-    agent_id: ctx.agentId,
+  await writeLogRow(ctx, {
     tool_name: name,
     input_hash: inputHash,
-    output_hash: outputHash,
+    output_hash: hashContent(output),
     status: 'ok',
     latency_ms: latencyMs,
   });
