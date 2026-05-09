@@ -221,6 +221,8 @@ npm run lint        # zero errors
 - [ ] No `console.log` in production paths.
 - [ ] No prompt content logged anywhere.
 - [ ] Migrations: SQL files only, not executed.
+- [ ] Security/crypto modules: test file in the same PR (anti-pattern #33).
+- [ ] DECISIONS_LOG entries describe implementation behavior accurately. If you write "logged," the code logs. If the code doesn't log, the decision says "silently dropped." Code and decision must agree.
 
 ---
 
