@@ -126,6 +126,23 @@ describe('event bus', () => {
     expect(calls).toEqual(['second-handler-ran']);
   });
 
+  it('handler error is logged but does not crash publisher', async () => {
+    const { client } = mockSupabase();
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    subscribe('lead.created', async () => {
+      throw new Error('handler blew up');
+    });
+
+    await expect(publish(makeLeadEvent(), client)).resolves.toBeUndefined();
+    expect(errorSpy).toHaveBeenCalledWith('event_bus.handler_failed', expect.objectContaining({
+      event_type: 'lead.created',
+      error_message: 'handler blew up',
+    }));
+
+    errorSpy.mockRestore();
+  });
+
   it('subscribers only receive events matching their type', async () => {
     const { client } = mockSupabase();
     const leadCalls: string[] = [];

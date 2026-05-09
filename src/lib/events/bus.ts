@@ -41,9 +41,13 @@ export async function publish(
   for (const { handler } of matching) {
     try {
       await (handler as Handler<DomainEvent>)(event);
-    } catch {
-      // Handler errors are swallowed so one bad subscriber doesn't crash the publisher.
-      // TODO: LENS-NNN — structured error logging + dead-letter queue for failed handlers.
+    } catch (err) {
+      // TODO: LENS-NNN — replace with structured logger + add handler identity.
+      console.error('event_bus.handler_failed', {
+        event_type: event.type,
+        error_name: err instanceof Error ? err.name : 'unknown',
+        error_message: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 }
