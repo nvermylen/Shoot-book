@@ -119,6 +119,54 @@ describe('gateway', () => {
       vi.useRealTimers();
     });
 
+    it('retries on network error (no status field)', async () => {
+      vi.useFakeTimers();
+
+      const networkErr = Object.assign(new Error('socket hang up'), {
+        name: 'APIConnectionError',
+      });
+      mockCreate
+        .mockRejectedValueOnce(networkErr)
+        .mockResolvedValueOnce(makeResponse());
+
+      const promise = callAgent(makeRequest());
+      await vi.runAllTimersAsync();
+      const result = await promise;
+
+      expect(result.retryCount).toBe(1);
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+
+      vi.useRealTimers();
+    });
+
+    it('retries on ECONNRESET', async () => {
+      vi.useFakeTimers();
+
+      const connErr = Object.assign(new Error('connection reset'), {
+        code: 'ECONNRESET',
+      });
+      mockCreate
+        .mockRejectedValueOnce(connErr)
+        .mockResolvedValueOnce(makeResponse());
+
+      const promise = callAgent(makeRequest());
+      await vi.runAllTimersAsync();
+      const result = await promise;
+
+      expect(result.retryCount).toBe(1);
+      vi.useRealTimers();
+    });
+
+    it('does not retry on status 600', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      mockCreate.mockRejectedValueOnce(makeApiError(600));
+
+      await expect(callAgent(makeRequest())).rejects.toThrow('API error 600');
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+
+      logSpy.mockRestore();
+    });
+
     it('does not retry on 400 — throws immediately with retryCount 0', async () => {
       mockCreate.mockRejectedValueOnce(makeApiError(400, 'bad request'));
 
@@ -270,14 +318,59 @@ describe('gateway', () => {
 
   describe('validation', () => {
     it('throws GatewayValidationError for empty messages array', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
       await expect(
         callAgent(makeRequest({ messages: [] })),
       ).rejects.toThrow(GatewayValidationError);
-      await expect(
-        callAgent(makeRequest({ messages: [] })),
-      ).rejects.toThrow('Messages array must not be empty');
 
       expect(mockCreate).not.toHaveBeenCalled();
+      logSpy.mockRestore();
+    });
+
+    it('logs validation failures with error status', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await expect(
+        callAgent(makeRequest({ messages: [] })),
+      ).rejects.toThrow(GatewayValidationError);
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      const logLine = JSON.parse(logSpy.mock.calls[0]![0] as string);
+      expect(logLine).toEqual(
+        expect.objectContaining({
+          status: 'error',
+          errorType: 'GatewayValidationError',
+          agentId: 'lead',
+          retryCount: 0,
+        }),
+      );
+
+      logSpy.mockRestore();
+    });
+  });
+
+  describe('tool schema validation', () => {
+    it('rejects non-object input schema', async () => {
+      registerTool({
+        name: 'test.bad_schema',
+        input: z.string(),
+        output: z.object({ result: z.string() }),
+        allowedAgents: ['lead'],
+        handler: async (input) => ({ result: input }),
+      });
+
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await expect(
+        callAgent(makeRequest({ tools: ['test.bad_schema'] })),
+      ).rejects.toThrow(GatewayValidationError);
+      await expect(
+        callAgent(makeRequest({ tools: ['test.bad_schema'] })),
+      ).rejects.toThrow("input schema must be an object");
+
+      expect(mockCreate).not.toHaveBeenCalled();
+      logSpy.mockRestore();
     });
   });
 });

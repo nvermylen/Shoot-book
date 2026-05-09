@@ -69,14 +69,34 @@ function getRetryDelay(retryIndex: number): number {
 }
 
 function isRetryable(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+
   if (
-    error instanceof Error &&
     'status' in error &&
     typeof (error as { status: unknown }).status === 'number'
   ) {
     const status = (error as { status: number }).status;
-    return status === 429 || status >= 500;
+    if (status === 429 || (status >= 500 && status < 600)) return true;
   }
+
+  if (
+    error.name === 'APIConnectionError' ||
+    error.name === 'APIConnectionTimeoutError'
+  ) {
+    return true;
+  }
+
+  if ('code' in error) {
+    const code = (error as { code: unknown }).code;
+    if (
+      code === 'ECONNRESET' ||
+      code === 'ETIMEDOUT' ||
+      code === 'ECONNREFUSED'
+    ) {
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -96,8 +116,18 @@ function resolveTools(toolNames: string[]): Anthropic.Tool[] {
       throw new GatewayValidationError(`Unknown tool: '${name}'`);
     }
     const jsonSchema = toJSONSchema(tool.input);
+    if (
+      typeof jsonSchema !== 'object' ||
+      (jsonSchema as { type?: unknown }).type !== 'object'
+    ) {
+      throw new GatewayValidationError(
+        `Tool '${name}' input schema must be an object — got ${(jsonSchema as { type?: string }).type ?? 'unknown'}`,
+      );
+    }
     return {
       name: tool.name,
+      // TODO: add description field to ToolSpec when first agent registers tools (Sprint 3)
+      description: '',
       input_schema: jsonSchema as Anthropic.Tool.InputSchema,
     };
   });
@@ -128,6 +158,31 @@ function logGatewayCall(entry: Record<string, unknown>): void {
   console.log(JSON.stringify(filtered));
 }
 
+function logFailure(
+  req: GatewayRequest,
+  errorType: string,
+  latencyMs: number,
+  retryCount: number,
+): void {
+  logGatewayCall({
+    requestId: req.metadata.requestId,
+    agentId: req.agentId,
+    promptVersion: VALID_AGENT_IDS.has(req.agentId)
+      ? `${req.agentId}.v0-stub`
+      : 'unknown',
+    modelUsed:
+      AGENT_MODELS[req.agentId as AgentId] ?? 'unknown',
+    inputTokens: 0,
+    outputTokens: 0,
+    latencyMs,
+    stopReason: null,
+    retryCount,
+    mode: (process.env.LENS_GATEWAY_MODE ?? 'live') as 'live' | 'eval',
+    status: 'error',
+    errorType,
+  });
+}
+
 let _client: Anthropic | null = null;
 
 function getClient(): Anthropic {
@@ -141,13 +196,19 @@ export function clearClient(): void {
   _client = null;
 }
 
+// NOTE: retryCount is returned on success and surfaced in logs on failure.
+// It is NOT attached to thrown errors — the original SDK error or
+// GatewayRetryExhaustedError preserves the underlying failure context.
+// Agents can correlate via requestId in logs.
 export async function callAgent(
   req: GatewayRequest,
 ): Promise<GatewayResponse> {
   if (!VALID_AGENT_IDS.has(req.agentId)) {
+    logFailure(req, 'GatewayValidationError', 0, 0);
     throw new GatewayValidationError(`Unknown agentId: '${req.agentId}'`);
   }
   if (!req.messages.length) {
+    logFailure(req, 'GatewayValidationError', 0, 0);
     throw new GatewayValidationError('Messages array must not be empty');
   }
 
@@ -156,10 +217,19 @@ export async function callAgent(
   const model = AGENT_MODELS[req.agentId];
 
   if (mode === 'eval') {
+    logFailure(req, 'GatewayEvalNotConfiguredError', 0, 0);
     throw new GatewayEvalNotConfiguredError();
   }
 
-  const tools = req.tools?.length ? resolveTools(req.tools) : undefined;
+  let tools: Anthropic.Tool[] | undefined;
+  try {
+    tools = req.tools?.length ? resolveTools(req.tools) : undefined;
+  } catch (err) {
+    if (err instanceof GatewayValidationError) {
+      logFailure(req, 'GatewayValidationError', 0, 0);
+    }
+    throw err;
+  }
 
   const params: Anthropic.MessageCreateParamsNonStreaming = {
     model,
@@ -209,21 +279,7 @@ export async function callAgent(
 
       if (!isRetryable(err) || attempt === MAX_ATTEMPTS - 1) {
         const latencyMs = Math.round(performance.now() - start);
-
-        logGatewayCall({
-          requestId: req.metadata.requestId,
-          agentId: req.agentId,
-          promptVersion,
-          modelUsed: model,
-          inputTokens: 0,
-          outputTokens: 0,
-          latencyMs,
-          stopReason: null,
-          retryCount,
-          mode,
-          status: 'error',
-          errorType: lastError.name,
-        });
+        logFailure(req, lastError.name, latencyMs, retryCount);
 
         if (isRetryable(err)) {
           throw new GatewayRetryExhaustedError(MAX_ATTEMPTS, lastError);
