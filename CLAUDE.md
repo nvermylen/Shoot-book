@@ -50,11 +50,11 @@ If a Claude Code question can be answered by these five files, the answer is in 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
 Current sprint:      Sprint 2 — ERP completion + AI infrastructure
-Last ticket:         LENS-006  (domain event bus)
-Next ticket:         LENS-007
+Last ticket:         LENS-007  (tool registry)
+Next ticket:         LENS-008
 Last migration:      migration_002_phase1_erp.sql
 Next migration:      (none planned — LENS-004 through LENS-014 are TS only)
-Last PR branch:      LENS-006-domain-event-bus
+Last PR branch:      LENS-007-tool-registry
 Active feature spec: docs/features/Phase1/Sprint2_ERP_AI_Infrastructure.md
 ```
 
