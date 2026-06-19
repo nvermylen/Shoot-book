@@ -50,11 +50,11 @@ If a Claude Code question can be answered by these five files, the answer is in 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
 Current sprint:      Sprint 2 — ERP completion + AI infrastructure
-Last ticket:         LENS-009  (eval harness skeleton)
-Next ticket:         LENS-010
+Last ticket:         LENS-010  (ERP read/write modules)
+Next ticket:         LENS-011
 Last migration:      migration_002_phase1_erp.sql
 Next migration:      (none planned — LENS-004 through LENS-014 are TS only)
-Last PR branch:      LENS-009-eval-harness
+Last PR branch:      LENS-010-erp-modules
 Active feature spec: docs/features/Phase1/Sprint2_ERP_AI_Infrastructure.md
 ```
 
