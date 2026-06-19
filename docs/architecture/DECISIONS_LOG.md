@@ -13,6 +13,37 @@
 
 ---
 
+### LENS-D-015 — ERP write-then-publish non-atomicity
+**Date:** 2026-06-19
+**Phase:** Phase 1 | Sprint 2
+**Status:** ✅ Active
+
+**Decision:** ERP write modules use a write-first-then-publish pattern. The row is written to Supabase, then the domain event is published via the event bus. These two operations are not atomic.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| RPC-wrapped transaction (row + event log in one `BEGIN/COMMIT`) | Atomic — no orphans possible | Supabase JS client doesn't expose transactions; `publish()` does in-memory subscriber dispatch after the DB insert, which can't be inside a Postgres transaction; fighting the client library |
+| Write row first, then publish event (chosen) | Works with existing client; orphaned row is detectable and recoverable; subscriber dispatch order is correct | Non-atomic — row can exist without event, or (in `convertLeadToClient`) client row can be orphaned if lead update fails |
+| Publish event first, then write row | Subscribers could pre-notify | Event without a row is unrecoverable — subscribers act on phantom data; worse failure mode |
+
+**Choice:** Write-first-then-publish with loud failure.
+
+**Rationale:** A row without an event is detectable (query rows with no matching `domain_event_log` entry) and recoverable (republish). An event without a row causes downstream subscribers to act on data that doesn't exist — unrecoverable without compensating events. The caller always sees the failure via the `warning` field on `ErpResult`, and the failure is logged to stdout via `console.error`.
+
+**Known orphan cases (severity-ordered):**
+1. **`convertLeadToClient` — orphaned client row** (higher severity): Client creation succeeds but lead status update fails. A client row exists that no lead references. The hard error returned to the caller includes the orphaned client's ID in `error.detail` so the orphan is traceable. No compensating delete — that's new failure surface for a deferred problem. Tested explicitly.
+2. **Any write — orphaned row without event**: Row writes to Supabase but `publish()` throws (e.g., `domain_event_log` insert fails). Row exists, event trail has a gap. Caller receives `{ data: <row>, warning: "event_publish_failed: ..." }`. `console.error` ensures it's visible in Vercel logs even if the caller ignores the warning.
+
+**Implications:**
+- Every ERP write function returns `ErpResult<T>` where `data` is never null when the row wrote successfully — even if the event failed. Callers must check `warning` to detect event gaps.
+- `convertLeadToClient` returns hard `db_error` (not warning) when the lead update fails, because the domain operation (conversion) did not complete — even though the client row exists.
+- No compensating deletes or rollbacks in Sprint 2 — the orphan is logged and traceable, not silently cleaned up.
+
+**Revisit Trigger:** D-011 (durable queue) resolves the event orphan. An RPC-wrapped `convertLeadToClient` or Postgres function resolves the client orphan. Either would make both operations atomic.
+
+---
+
 ### LENS-D-014 — Eval harness bypasses gateway in Sprint 2
 **Date:** 2026-05-09
 **Phase:** Phase 1 | Sprint 2
@@ -412,6 +443,7 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-015 | ERP write-then-publish non-atomicity | 2026-06-19 | Architecture | ✅ Active |
 | LENS-D-014 | Eval harness bypasses gateway in Sprint 2 | 2026-05-09 | Architecture | ✅ Active |
 | LENS-D-013 | Gateway logs stdout-only for Sprint 2 | 2026-05-09 | Architecture | ✅ Active |
 | LENS-D-012 | Permission rejections not in agent_tool_call_log | 2026-05-09 | Architecture | ✅ Active |
