@@ -3,6 +3,7 @@ import type { Fixture } from '../types';
 export const fixture: Fixture = {
   id: 'synthetic-failing',
   agentId: 'lead',
+  promptVersion: 'lead.v0-stub',
   description: 'Synthetic fixture that always fails — proves diff output',
   input: {
     messages: [{ role: 'user', content: 'Hello' }],

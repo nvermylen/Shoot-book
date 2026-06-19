@@ -15,6 +15,7 @@ export interface EvalExpected {
 export interface Fixture {
   id: string;
   agentId: AgentId;
+  promptVersion: string;
   description: string;
   input: {
     messages: Array<{ role: string; content: string }>;
@@ -27,6 +28,9 @@ export interface Fixture {
 
 export interface EvalResult {
   fixtureId: string;
+  agentId: AgentId;
+  promptVersion: string;
+  timestamp: string;
   passed: boolean;
   expected: EvalExpected;
   actual: EvalExpected;

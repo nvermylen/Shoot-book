@@ -35,16 +35,33 @@ function compare(
 }
 
 export function runFixture(fixture: Fixture): EvalResult {
-  const actual = fixture.mockOutput;
-  const { passed, diff } = compare(fixture.expected, actual);
+  try {
+    const actual = fixture.mockOutput;
+    const { passed, diff } = compare(fixture.expected, actual);
 
-  return {
-    fixtureId: fixture.id,
-    passed,
-    expected: fixture.expected,
-    actual,
-    ...(diff && { diff }),
-  };
+    return {
+      fixtureId: fixture.id,
+      agentId: fixture.agentId,
+      promptVersion: fixture.promptVersion,
+      timestamp: new Date().toISOString(),
+      passed,
+      expected: fixture.expected,
+      actual,
+      ...(diff && { diff }),
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      fixtureId: fixture.id,
+      agentId: fixture.agentId,
+      promptVersion: fixture.promptVersion ?? 'unknown',
+      timestamp: new Date().toISOString(),
+      passed: false,
+      expected: fixture.expected ?? { content: [], stopReason: '' },
+      actual: fixture.mockOutput ?? { content: [], stopReason: '' },
+      diff: `fixture error: ${message}`,
+    };
+  }
 }
 
 export function runEvalSuite(fixtures: Fixture[]): EvalReport {
@@ -64,7 +81,9 @@ export function formatReport(report: EvalReport): string {
 
   for (const result of report.results) {
     const marker = result.passed ? 'PASS' : 'FAIL';
-    lines.push(`  ${marker}  ${result.fixtureId}`);
+    lines.push(
+      `  ${marker}  ${result.fixtureId}  [${result.agentId}@${result.promptVersion}]`,
+    );
     if (result.diff) {
       for (const diffLine of result.diff.split('\n')) {
         lines.push(`        ${diffLine}`);

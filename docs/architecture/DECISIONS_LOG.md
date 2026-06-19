@@ -34,6 +34,7 @@
 - `runner.ts` does not import `gateway.ts` or `@anthropic-ai/sdk`.
 - Sprint 3 wires the gateway's eval mode to load fixtures and replay them, then the runner calls through the gateway.
 - The `GatewayEvalNotConfiguredError` message documents this deferral.
+- Eval results are stdout-only — no DB table or file persistence. Consistent with the ZDR posture (no prompt/response content stored) and sufficient for the skeleton; revisit when eval volume justifies persistence.
 
 **Revisit Trigger:** Sprint 3 — when LeadAgent ships its first real fixtures.
 

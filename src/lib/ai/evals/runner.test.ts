@@ -11,6 +11,9 @@ describe('eval runner', () => {
 
       expect(result.passed).toBe(true);
       expect(result.fixtureId).toBe('synthetic-passing');
+      expect(result.agentId).toBe('lead');
+      expect(result.promptVersion).toBe('lead.v0-stub');
+      expect(result.timestamp).toBeTruthy();
       expect(result.diff).toBeUndefined();
     });
 
@@ -19,6 +22,8 @@ describe('eval runner', () => {
 
       expect(result.passed).toBe(false);
       expect(result.fixtureId).toBe('synthetic-failing');
+      expect(result.agentId).toBe('lead');
+      expect(result.promptVersion).toBe('lead.v0-stub');
       expect(result.diff).toBeDefined();
       expect(result.diff).toContain('Expected response');
       expect(result.diff).toContain('Different response');
@@ -28,6 +33,7 @@ describe('eval runner', () => {
       const fixture: Fixture = {
         id: 'stop-reason-mismatch',
         agentId: 'lead',
+        promptVersion: 'lead.v0-stub',
         description: 'stopReason mismatch',
         input: { messages: [{ role: 'user', content: 'Hello' }] },
         expected: {
@@ -52,6 +58,7 @@ describe('eval runner', () => {
       const fixture: Fixture = {
         id: 'block-count-mismatch',
         agentId: 'lead',
+        promptVersion: 'lead.v0-stub',
         description: 'block count mismatch',
         input: { messages: [{ role: 'user', content: 'Hello' }] },
         expected: {
@@ -74,10 +81,51 @@ describe('eval runner', () => {
       expect(result.diff).toContain('1');
     });
 
+    it('returns failed result instead of throwing on malformed fixture', () => {
+      const malformed = {
+        id: 'malformed',
+        agentId: 'lead',
+        promptVersion: 'lead.v0-stub',
+        description: 'missing content arrays',
+        input: { messages: [{ role: 'user', content: 'Hello' }] },
+        expected: { content: null, stopReason: 'end_turn' },
+        mockOutput: { content: null, stopReason: 'end_turn' },
+      } as unknown as Fixture;
+
+      const result = runFixture(malformed);
+
+      expect(result.passed).toBe(false);
+      expect(result.fixtureId).toBe('malformed');
+      expect(result.diff).toContain('fixture error');
+    });
+
+    it('does not stop suite on malformed fixture', () => {
+      const malformed = {
+        id: 'malformed',
+        agentId: 'lead',
+        promptVersion: 'lead.v0-stub',
+        description: 'will throw internally',
+        input: { messages: [{ role: 'user', content: 'Hello' }] },
+        expected: null,
+        mockOutput: null,
+      } as unknown as Fixture;
+
+      const report = runEvalSuite([malformed, passingFixture]);
+
+      expect(report.total).toBe(2);
+      expect(report.passed).toBe(1);
+      expect(report.failed).toBe(1);
+      expect(report.results[0]!.fixtureId).toBe('malformed');
+      expect(report.results[0]!.passed).toBe(false);
+      expect(report.results[1]!.fixtureId).toBe('synthetic-passing');
+      expect(report.results[1]!.passed).toBe(true);
+    });
+
     it('compares content blocks by value, not reference', () => {
       const fixture: Fixture = {
         id: 'value-equality',
         agentId: 'lead',
+        promptVersion: 'lead.v0-stub',
         description: 'value equality check',
         input: { messages: [{ role: 'user', content: 'Hello' }] },
         expected: {
@@ -132,21 +180,23 @@ describe('eval runner', () => {
   });
 
   describe('formatReport', () => {
-    it('shows PASS marker for passing fixtures', () => {
+    it('shows PASS marker with agent and version for passing fixtures', () => {
       const report = runEvalSuite([passingFixture]);
       const output = formatReport(report);
 
       expect(output).toContain('PASS');
       expect(output).toContain('synthetic-passing');
+      expect(output).toContain('[lead@lead.v0-stub]');
       expect(output).toContain('1/1 passed, 0 failed');
     });
 
-    it('shows FAIL marker and diff for failing fixtures', () => {
+    it('shows FAIL marker with agent and version and diff for failing fixtures', () => {
       const report = runEvalSuite([failingFixture]);
       const output = formatReport(report);
 
       expect(output).toContain('FAIL');
       expect(output).toContain('synthetic-failing');
+      expect(output).toContain('[lead@lead.v0-stub]');
       expect(output).toContain('Expected response');
       expect(output).toContain('Different response');
       expect(output).toContain('0/1 passed, 1 failed');
