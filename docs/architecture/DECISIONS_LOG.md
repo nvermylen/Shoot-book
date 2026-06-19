@@ -13,6 +13,33 @@
 
 ---
 
+### LENS-D-014 — Eval harness bypasses gateway in Sprint 2
+**Date:** 2026-05-09
+**Phase:** Phase 1 | Sprint 2
+**Status:** ✅ Active
+
+**Decision:** The eval runner uses fixture-provided `mockOutput` as the "actual" response rather than calling through the gateway. The gateway's eval mode toggle (`GatewayEvalNotConfiguredError`) is not wired to a fixture provider.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Wire fixture provider into gateway eval mode | End-to-end path tested; gateway eval toggle works | Couples harness to gateway internals; premature — no real fixtures exist; extra complexity for Sprint 2 |
+| Bypass gateway, compare fixture fields directly (chosen) | Harness comparison logic tested in isolation; no gateway coupling; simpler; Sprint 3 can wire the gateway path when real fixtures exist | Doesn't exercise gateway eval mode; that path throws `GatewayEvalNotConfiguredError` until wired |
+
+**Choice:** Bypass gateway.
+
+**Rationale:** Sprint 2 ships the harness skeleton — the comparison and reporting logic is the deliverable. No real agent fixtures exist yet. Wiring fixture playback through the gateway adds coupling to a path that will change when prompt versioning ships (Sprint 3). The gateway's eval mode already throws `GatewayEvalNotConfiguredError` with a clear message directing future work. Testing comparison logic in isolation is more valuable than testing plumbing that will be rewritten.
+
+**Implications:**
+- `runner.ts` does not import `gateway.ts` or `@anthropic-ai/sdk`.
+- Sprint 3 wires the gateway's eval mode to load fixtures and replay them, then the runner calls through the gateway.
+- The `GatewayEvalNotConfiguredError` message documents this deferral.
+- Eval results are stdout-only — no DB table or file persistence. Consistent with the ZDR posture (no prompt/response content stored) and sufficient for the skeleton; revisit when eval volume justifies persistence.
+
+**Revisit Trigger:** Sprint 3 — when LeadAgent ships its first real fixtures.
+
+---
+
 ### LENS-D-013 — Gateway logs stdout-only for Sprint 2
 **Date:** 2026-05-09
 **Phase:** Phase 1 | Sprint 2
@@ -385,6 +412,7 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-014 | Eval harness bypasses gateway in Sprint 2 | 2026-05-09 | Architecture | ✅ Active |
 | LENS-D-013 | Gateway logs stdout-only for Sprint 2 | 2026-05-09 | Architecture | ✅ Active |
 | LENS-D-012 | Permission rejections not in agent_tool_call_log | 2026-05-09 | Architecture | ✅ Active |
 | LENS-D-011 | Event bus in-memory; durable queue deferred | 2026-05-06 | Architecture | ✅ Active |
