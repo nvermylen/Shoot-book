@@ -217,6 +217,7 @@
 **What:** Calling `supabase.from(...).insert(...)` (or update/delete) without checking the returned `{ error }` field, or using `.then(...)` / `await` and dropping the result.
 **Why:** Supabase doesn't throw on RLS denials or transient DB errors. It returns `{ data, error }`. Ignoring `error` means failures are silent. The audit log gets gaps. Webhook handlers silently fail. State diverges.
 **Instead:** Always destructure `{ error }`. Either throw (when the call's purpose fails without it) or `console.error` and continue (when the call is best-effort, like an audit log). Decide which posture per call site, document the choice in a code comment.
+**CI enforcement:** `scripts/check-supabase-error-handling.sh` — line-scoped grep gate. Multi-line mutation chains (`.from('x')` on one line, `.insert(...)` on the next) slip past it. Keep mutations on one line so the gate catches them.
 
 ---
 
@@ -224,8 +225,9 @@
 
 | Date | Entry Added | Reason |
 |------|-------------|--------|
+| 2026-06-21 | #37 CI enforcement note | LENS-014 shipped grep gate; documenting line-scope limitation |
 | 2026-05-09 | #37 | Recurring PR rejection — LENS-006 (event bus) and LENS-007 (tool registry) both shipped Supabase writes without checking `{ error }` |
 
 ---
 
-*Lens | Anti-Patterns | Last updated: 2026-05-09*
+*Lens | Anti-Patterns | Last updated: 2026-06-21*

@@ -13,6 +13,35 @@
 
 ---
 
+### LENS-D-016 — RLS verified in CI via dedicated test project, fails-closed
+**Date:** 2026-06-21
+**Phase:** Phase 1 | Sprint 2
+**Status:** ✅ Active
+
+**Decision:** RLS isolation is verified in CI by running the full cross-tenant test suite (`npm run test:rls`) against a dedicated Supabase test project. The CI job fails-closed: missing secrets or a production project URL causes a hard failure, not a silent skip.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| RLS tests in local Supabase CLI (`supabase start`) | No external dependency; fully offline | CLI's local Postgres doesn't replicate hosted RLS edge cases; auth emulator behavior differs from hosted; adds Docker dependency to CI |
+| RLS tests against hosted test project (chosen) | Tests real RLS policies as deployed; same auth flow as production; catches policy drift | Requires CI secrets; network dependency; test project must be maintained |
+| RLS tests against production with test users | Zero infrastructure; tests the real thing | Mutates production data; cleanup failures leak test rows; violates ANTI_PATTERNS #7 spirit |
+| Skip RLS testing in CI, manual only | Simple | Isolation verification drifts back to assumption — the exact failure mode LENS-013 existed to kill |
+
+**Choice:** Hosted test project with fails-closed CI job.
+
+**Rationale:** The whole point of LENS-013 was to make tenant isolation a verified property, not an assumption. If the verification only runs locally and never in CI, it rots within one sprint. The test project (`eqqfukokwtwqwcqqeneo`) is isolated from production data. The host assertion (`grep -q "vvcuennzifsovbbylolx"` → exit 1) prevents credential misconfiguration from mutating Morgan's data. Fails-closed means a broken secret config surfaces immediately rather than producing a green checkmark that proves nothing.
+
+**Implications:**
+- Three CI secrets required: `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_ROLE_KEY`.
+- The test project must have the same migrations applied as production. Migration application is manual (ANTI_PATTERNS #1), so both projects must be updated in the same session.
+- `npm test` excludes `tests/rls/**` — the fast unit loop stays fast. RLS runs separately.
+- The grep gate for ANTI_PATTERNS #37 is line-scoped (known limitation, documented).
+
+**Revisit Trigger:** If Supabase CLI's local auth emulator reaches parity with hosted RLS behavior, local-only testing becomes viable and removes the network/secret dependency.
+
+---
+
 ### LENS-D-015 — ERP write-then-publish non-atomicity
 **Date:** 2026-06-19
 **Phase:** Phase 1 | Sprint 2

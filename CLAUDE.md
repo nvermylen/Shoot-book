@@ -49,12 +49,12 @@ If a Claude Code question can be answered by these five files, the answer is in 
 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
-Current sprint:      Sprint 2 — ERP completion + AI infrastructure
-Last ticket:         LENS-013  (RLS verification test suite)
-Next ticket:         LENS-014
+Current sprint:      Sprint 2 — ERP completion + AI infrastructure (CLOSING)
+Last ticket:         LENS-014  (CI guards + RLS-in-CI + error-handling gate)
+Next ticket:         LENS-015  (Sprint 3 — LeadAgent)
 Last migration:      migration_002_phase1_erp.sql
 Next migration:      (none planned — LENS-004 through LENS-014 are TS only)
-Last PR branch:      LENS-013-rls-verification
+Last PR branch:      LENS-014-ci-guards
 Active feature spec: docs/features/Phase1/Sprint2_ERP_AI_Infrastructure.md
 ```
 
@@ -67,6 +67,9 @@ npm run dev          # Start dev server (Next.js on localhost:3000)
 npm run build        # Production build
 npm run lint         # ESLint (eslint-config-next)
 npx tsc --noEmit     # Type check (run before every commit)
+npm test             # Unit tests (excludes RLS suite)
+npm run test:rls     # RLS isolation tests (requires .env.test with test project creds)
+npm run check:error-handling  # ANTI_PATTERNS #37 grep gate
 ```
 
 Path alias: `@/*` maps to `./src/*` (configured in `tsconfig.json`).
