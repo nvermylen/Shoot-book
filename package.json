@@ -1,5 +1,5 @@
 {
-  "name": "temp-scaffold",
+  "name": "shoot-book",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run --exclude 'tests/rls/**'",
     "test:rls": "vitest run tests/rls/",
+    "check:error-handling": "bash scripts/check-supabase-error-handling.sh src",
     "evals": "tsx src/lib/ai/evals/run-evals.ts"
   },
   "dependencies": {
