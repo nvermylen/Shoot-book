@@ -42,6 +42,33 @@
 
 ---
 
+### LENS-D-017 — Event-trail-as-versioning (no version columns)
+**Date:** 2026-06-21
+**Phase:** Phase 1 | Sprint 2
+**Status:** ✅ Active
+
+**Decision:** Entity tables have no `version`, `revision`, or `updated_by` columns. Change history is derived exclusively from `domain_event_log`.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Row-level version columns (`version int`, `updated_by text`) | Easy "last modified" query; no join needed | Duplicates event log; write amplification on every update; drift risk between column and log; doesn't capture *what* changed |
+| Event log as sole history source (chosen) | Single source of truth; captures full change semantics (event type + payload); no duplication; no extra write per update | Requires event log query + join for "who changed this last"; query is slightly more complex |
+| Both (columns + event log) | Maximum queryability | Maximum duplication; guaranteed drift over time |
+
+**Choice:** Event log only.
+
+**Rationale:** The `domain_event_log` already stores typed events with timestamps and payloads for every write. Adding version columns would duplicate this information, introduce a consistency surface (column says version 3 but only 2 events exist), and add a write to every update. The event log captures *what* changed (event type) and *to what* (payload), which version columns cannot. The cost is a slightly more complex "last modified" query — acceptable given the log is already indexed by `photographer_id`.
+
+**Implications:**
+- "Who changed this entity last?" → `SELECT * FROM domain_event_log WHERE type LIKE '[entity].%' AND payload->>'[entity]_id' = $1 ORDER BY created_at DESC LIMIT 1`.
+- If future UI needs a "last modified" timestamp without a join, the answer is a materialized view or denormalized cache — not a column on the entity table.
+- No `updated_by` column means agent attribution lives in event payloads only.
+
+**Revisit Trigger:** If query latency for "last modified" becomes a production issue measured in p95, add a materialized view. Do not add columns.
+
+---
+
 ### LENS-D-015 — ERP write-then-publish non-atomicity
 **Date:** 2026-06-19
 **Phase:** Phase 1 | Sprint 2
