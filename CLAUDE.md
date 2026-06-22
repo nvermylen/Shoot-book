@@ -83,13 +83,13 @@ If a Claude Code question can be answered by these files, the answer is in those
 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
-Current sprint:      Sprint 3 — IN PROGRESS (LeadAgent merged, Booking next)
-Last ticket:         LENS-015  (LeadAgent — structured-output qualification + fixture evals)
-Next ticket:         LENS-016  (Sprint 3 — BookingAgent)
+Current sprint:      Sprint 3 — IN PROGRESS (LeadAgent + BookingAgent merged, Comms next)
+Last ticket:         LENS-016  (BookingAgent — reads-then-writes orchestration, recovery cycle)
+Next ticket:         LENS-017  (migration_003 — source_message_id column + unique index, D-019 debt)
 Last migration:      migration_002_phase1_erp.sql
 Next migration:      migration_003 — add lead.source_message_id column + unique index on (photographer_id, source_message_id); backfill from intent_summary sentinels; remove app-level dedup + sentinel (D-019 revisit trigger)
-Last PR branch:      LENS-015-lead-agent
-Active feature spec: (Booking spec not yet written)
+Last PR branch:      LENS-016-booking-agent
+Active feature spec: (Morning sweep / dashboard spec not yet written)
 ```
 
 ---

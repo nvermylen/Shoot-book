@@ -13,6 +13,35 @@
 
 ---
 
+### LENS-D-021 — BookingAgent: reads-then-writes, retry-to-recover, three-way entry predicate
+**Date:** 2026-06-22
+**Phase:** Phase 1 | Sprint 3
+**Status:** ✅ Active
+
+**Decision:** BookingAgent uses three boundary-shaping patterns:
+1. **Reads-then-writes ordering** — Package selection (gateway call) is a pure read. If the model returns no-match, the agent exits with zero writes. Client conversion and booking creation only happen after a validated selection.
+2. **Retry-to-recover over rollback** — If createBooking fails after convertLeadToClient succeeds, the lead is left in `converted` state with a minted client. On re-run, the entry predicate detects `converted` and skips conversion, retrying only the booking write. No rollback, no orphan cleanup job.
+3. **Three-way entry predicate** — `qualification_status === 'qualified'` → full sequence; `=== 'converted'` → skip to booking (recovery path); anything else → reject early with zero reads beyond getLead.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Reads-then-writes (chosen) | Zero-write exit on no-match; no orphan clients from failed bookings when model says "no fit" | Requires two gateway calls if we ever need a second model decision post-conversion |
+| Interleaved writes + compensating rollback | Familiar transactional pattern | Can't un-publish domain events; compensating logic is complex and fragile |
+| Retry-to-recover (chosen) | Idempotent re-entry; append-only event trail stays honest; no cleanup jobs | Lead stays in `converted` with no booking until retry succeeds; operator sees partial state in the interim |
+| Orphan-cleanup background job | Eventually consistent | Extra infrastructure; race conditions with legitimate re-runs; event trail shows "created then deleted" |
+
+**Choice:** Reads-then-writes + retry-to-recover. The converted state IS the recovery signal — no external coordination needed.
+
+**Implications:**
+- Case 10 (recovery cycle test) verifies the invariant: convertLeadToClient exactly once across both runs.
+- Any future agent that hands off to BookingAgent must pass a `qualified` or `converted` lead; anything else is rejected at the gate.
+- The `converted + null converted_client_id` state is a defensive error, not a valid path — it means data corruption.
+
+**Revisit Trigger:** If we add a second write before booking (e.g., contract generation) that can also fail, the retry-to-recover pattern needs extension — the entry predicate must distinguish "converted but no contract" from "converted with contract but no booking."
+
+---
+
 ### LENS-D-020 — Habit lens is a conditional review gate; CC emits, reviewer verifies
 **Date:** 2026-06-22
 **Phase:** Phase 1 | Sprint 3
