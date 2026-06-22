@@ -13,6 +13,34 @@
 
 ---
 
+### LENS-D-020 — Habit lens is a conditional review gate; CC emits, reviewer verifies
+**Date:** 2026-06-22
+**Phase:** Phase 1 | Sprint 3
+**Status:** ✅ Active
+
+**Decision:** The seven HABIT_DESIGN.md rules apply to user-surface tickets only (dashboard, onboarding, notification, agent-sent comms); N/A for pure ERP-layer work. Rules 4 (dashboard accuracy) and 6 (no gamification) are blocking merge-stoppers; the other five are advisory. CC emits a filled HABIT LENS block on user-surface PRs; reviewer verifies FAILs against rendered output.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| CC-emitted structured block (chosen) | Consistent with existing discipline (test counts, diffs); artifact-based review; obligation visible at session start via PERSONA_PM.md | Adds output to PR writeup |
+| Reviewer-only mental checklist | No CC overhead | Leaves no artifact or trace; reviewer-dependent; no enforcement consistency |
+| Apply to all tickets unconditionally | Simpler rule | Dilutes the gate on ERP-only tickets where no surface exists to score |
+
+**Choice:** CC emits on user-surface tickets; reviewer verifies against rendered output.
+
+**Rationale:** Lens's review discipline is artifact-based — CC produces structured output (test counts, eval results, diffs), reviewer verifies against the real thing. The habit lens follows the same pattern. Mechanics live in `PERSONA_PM.md` (the file CC reads for scope decisions); rule definitions stay in `HABIT_DESIGN.md` to avoid duplication drift. `CLAUDE.md` carries pointers only.
+
+**Implications:**
+- Every user-surface PR includes a HABIT LENS output block.
+- Rule 4 / 6 FAIL = merge blocker, same weight as a failing test.
+- Rules 1, 2, 3, 5, 7 are advisory — logged, not blocking.
+- Pure ERP tickets (LeadAgent qualification, entity writes, evals) are N/A — no forced scoring.
+
+**Revisit Trigger:** First user-surface ticket ships (likely the morning-sweep dashboard). Verify the gate works in practice — is the output block useful to the reviewer, or is it ceremony?
+
+---
+
 ### LENS-D-019 — source_message_id stored as interim intent_summary sentinel pending dedicated column
 **Date:** 2026-06-22
 **Phase:** Phase 1 | Sprint 3

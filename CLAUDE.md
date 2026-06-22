@@ -27,6 +27,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Product Truth — Read Before Building Any Feature
+
+> Full rules: **`HABIT_DESIGN.md`** (root). This is the *why* behind the *what*.
+
+Lens is a **daily-operator system of record**, not an occasional-use tool. The
+archetype user (Morgan, ~100 clients/year) is in the system **every morning**
+answering: who owes me, who's next (when/where), what's late. The habit we are
+building is **one morning sweep in Lens replacing the four-tab ritual** (Stripe +
+Calendar + Gmail + spreadsheet) she runs today.
+
+Every feature is evaluated against that habit. A feature is not done because it
+works — it is done when it serves the daily sweep. The seven rules in
+`HABIT_DESIGN.md` are binding; the four that touch the build most often:
+
+- **Morning sweep is one screen** — who owes / who's next / what's late, single
+  glance, zero navigation. North-star metric: *time-to-confidence.*
+- **Dashboard accuracy is a P0 release gate** — for a daily system of record,
+  accuracy IS the retention mechanic. A stale or wrong morning read is a P0 bug,
+  never polish. Prefer "syncing…" over stale-but-confident data.
+- **Never open empty / notification discipline** — endowed progress (seed from
+  import, no blank slates for the primary user); every alert maps to a real
+  business event, never an engagement nudge.
+- **No gamification of money or operations** — reward is relief and confidence via
+  speed, completeness, and trust. No points, streaks, or confetti. (Manipulation
+  Matrix: we are a Facilitator. Keep it that way.)
+
+The one risk that overrides roadmap debates: **the two-system trap.** If the user
+hedges between Lens and her old tool, the habit never forms. Onboarding's job is
+**single-system cutover within 14 days**, not a feature tour. Ask of every roadmap
+call: *does this get her fully off the incumbent faster?*
+
+---
+
 ## Architecture (Read These First)
 
 | File | Why |
@@ -36,8 +69,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `docs/architecture/INTEGRATION_REGISTRY.md` | External system contracts (Gmail, Calendar, Stripe, QuickBooks, Storage). |
 | `docs/personas/PERSONA_ARCH.md` | Schema, API, layer-separation standards. |
 | `docs/personas/PERSONA_DEV.md` | File structure, TS standards, naming. |
+| `HABIT_DESIGN.md` (root) | **Product truth.** Why we build what we build. Lens is a daily-operator system of record; every feature serves the morning sweep. Seven enforceable habit rules. |
 
-If a Claude Code question can be answered by these five files, the answer is in those files — not in this one.
+If a Claude Code question can be answered by these files, the answer is in those files — not in this one.
 
 ---
 
@@ -189,7 +223,7 @@ See `docs/architecture/INTEGRATION_REGISTRY.md` for full per-integration spec.
 
 1. **Generate SQL only** — filename: `migration_[NNN]_[description].sql`.
 2. **Never execute** migrations via Claude Code — applied manually in Supabase dashboard.
-3. **Current highest:** `migration_001_photographer_and_clients.sql` — next file = `migration_002_phase1_erp.sql`.
+3. **Current highest:** `migration_002_phase1_erp.sql` (applied) — next file = next sequential number.
 4. **Every new table:** RLS enabled + at least one photographer-scoped policy in the same migration.
 5. **File header:** `-- Migration: [NNN] | [description] | [date]`.
 6. **After applying:** update Current Build State above.
@@ -227,6 +261,7 @@ npm run lint        # zero errors
 - [ ] Migrations: SQL files only, not executed.
 - [ ] Security/crypto modules: test file in the same PR (anti-pattern #33).
 - [ ] DECISIONS_LOG entries describe implementation behavior accurately. If you write "logged," the code logs. If the code doesn't log, the decision says "silently dropped." Code and decision must agree.
+- [ ] Feature serves the daily sweep (`HABIT_DESIGN.md`). Any dashboard/data-surfacing change preserves accuracy (P0) and time-to-confidence. No gamification, no empty-state for the primary user, no engagement-nudge notifications. PM persona owns this check.
 
 ---
 
@@ -257,15 +292,16 @@ npm run lint        # zero errors
 ```
 1. Read this file                                    → current build state
 2. Read the active Feature Spec                      → what's being built
-3. Read docs/architecture/AGENT_ARCHITECTURE.md      → if touching agents
-4. Read docs/architecture/ERP_DATA_MODEL.md          → if touching schema
-5. Read docs/architecture/INTEGRATION_REGISTRY.md    → if touching integrations
-6. Read docs/architecture/ANTI_PATTERNS.md           → before writing code
-7. Read relevant persona                             → ARCH for design, DEV for implementation
-8. Execute CC Prompt                                 → work through PRs in dependency order
-9. Generate migrations                               → SQL files only, never run them
-10. Quality gate                                     → tsc + lint pass before commit
-11. Update Current Build State                       → ticket #, migration #, branch name, feature spec path
+3. Read HABIT_DESIGN.md                              → does this feature serve the daily sweep?
+4. Read docs/architecture/AGENT_ARCHITECTURE.md      → if touching agents
+5. Read docs/architecture/ERP_DATA_MODEL.md          → if touching schema
+6. Read docs/architecture/INTEGRATION_REGISTRY.md    → if touching integrations
+7. Read docs/architecture/ANTI_PATTERNS.md           → before writing code
+8. Read relevant persona                             → ARCH for design, DEV for implementation
+9. Execute CC Prompt                                 → work through PRs in dependency order
+10. Generate migrations                              → SQL files only, never run them
+11. Quality gate                                     → tsc + lint + habit check pass before commit
+12. Update Current Build State                       → ticket #, migration #, branch name, feature spec path
 ```
 
 ---
@@ -274,6 +310,7 @@ npm run lint        # zero errors
 
 | File | Read When |
 |------|-----------|
+| `HABIT_DESIGN.md` (root) | Before any feature scope or dashboard/UX decision — does it serve the daily sweep? |
 | `docs/architecture/AGENT_ARCHITECTURE.md` | Anything touching agents, tools, gateway, prompts |
 | `docs/architecture/ERP_DATA_MODEL.md` | Anything touching entities or schema |
 | `docs/architecture/INTEGRATION_REGISTRY.md` | Anything touching Gmail / Calendar / Stripe / QB / Storage |
@@ -285,10 +322,10 @@ npm run lint        # zero errors
 | `docs/personas/PERSONA_ARCH.md` | Schema or API contract decisions |
 | `docs/personas/PERSONA_DEV.md` | Implementation pattern questions |
 | `docs/personas/PERSONA_QA.md` | Writing acceptance criteria or tests |
-| `docs/personas/PERSONA_PM.md` | Scope decisions, what to build / not build |
+| `docs/personas/PERSONA_PM.md` | Scope decisions, what to build / not build — enforce `HABIT_DESIGN.md` rules |
 | `docs/personas/PERSONA_UX.md` | UI flow, interaction, state coverage |
 | `docs/personas/persona-end-user.md` | Understanding Morgan (design partner #1) |
 
 ---
 
-*Lens | CLAUDE.md | Updated: 2026-05-06 | Phase 1 Sprint 2*
+*Lens | CLAUDE.md | Updated: 2026-06-22 | Phase 1 Sprint 2 | + HABIT_DESIGN*
