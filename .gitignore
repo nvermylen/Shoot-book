@@ -33,6 +33,9 @@ yarn-error.log*
 .env
 .env.test
 
+# import data (PII — never commit real client exports)
+session-clients-*.csv
+
 # vercel
 .vercel
 
