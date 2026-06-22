@@ -6,14 +6,12 @@ import { publish } from '@/lib/events/bus';
 
 export async function findLeadBySourceMessage(
   supabase: SupabaseClient,
-  photographerId: string,
   sourceMessageId: string,
 ): Promise<ErpResult<Lead | null>> {
   const { data, error } = await supabase
     .from('lead')
     .select('*')
-    .eq('photographer_id', photographerId)
-    .like('intent_summary', `[src:${sourceMessageId}]%`)
+    .like('intent_summary', `%[lens:src_msg_id=${sourceMessageId}]`)
     .is('deleted_at', null)
     .maybeSingle();
 

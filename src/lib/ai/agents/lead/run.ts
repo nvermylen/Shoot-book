@@ -34,7 +34,7 @@ export async function runLeadAgent(
   const warnings: string[] = [];
 
   // Step 1: Dedup — check for existing lead by source_message_id
-  const dedupResult = await findLeadBySourceMessage(supabase, payload.photographer_id, payload.source_message_id);
+  const dedupResult = await findLeadBySourceMessage(supabase, payload.source_message_id);
   if (dedupResult.error) return dedupResult as ErpResult<LeadAgentOutcome>;
   if (dedupResult.data) {
     return {
@@ -44,14 +44,15 @@ export async function runLeadAgent(
   }
 
   // Step 2: Create lead via ERP module
-  const intentPrefix = `[src:${payload.source_message_id}] `;
+  const sentinel = `\n\n[lens:src_msg_id=${payload.source_message_id}]`;
+  const intentSummary = (payload.intent_summary ?? '') + sentinel;
   const createResult = await createLead(supabase, {
     photographer_id: payload.photographer_id,
     display_name: payload.display_name,
     email: payload.email,
     phone: payload.phone,
     source: payload.source,
-    intent_summary: intentPrefix + (payload.intent_summary ?? ''),
+    intent_summary: intentSummary,
     received_at: payload.received_at,
   });
 

@@ -13,30 +13,31 @@
 
 ---
 
-### LENS-D-019 — Dedup is app-enforced; unique index deferred to async ingestion
+### LENS-D-019 — source_message_id stored as interim intent_summary sentinel pending dedicated column
 **Date:** 2026-06-22
 **Phase:** Phase 1 | Sprint 3
 **Status:** ✅ Active
 
-**Decision:** LeadAgent dedup uses an app-level query (`intent_summary LIKE '[src:{id}]%'`) to detect duplicate source messages before creating a lead. No database-level unique constraint exists yet.
+**Decision:** LENS-015 enforces lead idempotency by `source_message_id`, but adding a real column requires a migration deferred past 015. Interim: the ID is stored as a trailing namespaced sentinel (`\n\n[lens:src_msg_id=<id>]`) appended to `intent_summary`, matched by anchored LIKE (`%[lens:src_msg_id=<id>]`). This is acknowledged interim debt. No database-level unique constraint exists yet. RLS is the sole tenant boundary — `findLeadBySourceMessage` does not filter by `photographer_id` at the app layer.
 
 **Options Considered:**
 | Option | Pros | Cons |
 |--------|------|------|
-| App-level query (chosen for now) | Works today; no migration required; sufficient for single-process sequential ingestion | Race condition under concurrent ingestion; no DB enforcement |
-| Unique partial index on `(photographer_id, source_message_id_prefix)` | DB-enforced; race-proof | Requires a column or expression index on a prefix; adds migration; overkill for sequential-only ingestion in Sprint 3 |
-| Separate `source_message_id` column + unique index | Cleanest long-term | Schema change + migration + backfill; not justified until async ingestion exists |
+| Trailing sentinel in `intent_summary` (chosen) | Works today; no migration; deliberate namespaced format avoids content collision; single write site | Structured key in a free-text field; requires strip-on-display; LIKE scan |
+| Leading prefix (`[src:{id}] ...`) | Simpler LIKE anchor | Collides with real content starting with `[src:`; written inconsistently across code paths |
+| Separate `source_message_id` column + unique index | Cleanest long-term; DB-enforced dedup | Schema change + migration + backfill; not justified until async ingestion exists |
 
-**Choice:** App-level for Sprint 3.
+**Choice:** Trailing sentinel for Sprint 3; dedicated column at next migration.
 
-**Rationale:** The current ingestion path is synchronous and single-process — app-level dedup is sufficient. When ingestion becomes async (queue-driven, webhook-triggered), a unique index must back this to close the race window. The `[src:{id}]` prefix convention in `intent_summary` is the dedup key for now.
+**Rationale:** The current ingestion path is synchronous and single-process — app-level dedup is sufficient. The `[lens:src_msg_id=<id>]` namespace avoids collision with user-authored content. The sentinel is appended in exactly one code path (`run.ts`, when constructing `intentSummary` for `createLead`). When reading `intent_summary` back for display (LENS-016+), the sentinel must be stripped.
 
 **Implications:**
 - LeadAgent checks `findLeadBySourceMessage()` before `createLead()`.
-- Under concurrent ingestion, a duplicate lead could slip through. Acceptable for now.
-- When async ingestion lands, add a unique partial index (or a dedicated `source_message_id` column).
+- `findLeadBySourceMessage` relies on RLS for tenant scoping — no app-layer `photographer_id` filter.
+- Under concurrent ingestion, a duplicate lead could slip through. Acceptable while ingestion is synchronous/manual.
+- Display layer must strip the trailing sentinel when surfacing `intent_summary` to users.
 
-**Revisit Trigger:** Async lead ingestion (webhook-triggered or queue-driven) ships.
+**Revisit Trigger:** Next migration runs — add a real `lead.source_message_id` column with a unique index on `(photographer_id, source_message_id)`. That index becomes the real idempotency enforcement; the app-level check + sentinel are removed; existing sentinels are backfilled into the column.
 
 ---
 

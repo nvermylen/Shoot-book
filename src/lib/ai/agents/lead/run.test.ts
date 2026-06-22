@@ -61,7 +61,7 @@ const fakeLead = {
   email: 'jane@example.com',
   phone: null,
   source: 'web_form' as const,
-  intent_summary: '[src:msg-001] I want senior portraits for my daughter next spring',
+  intent_summary: 'I want senior portraits for my daughter next spring\n\n[lens:src_msg_id=msg-001]',
   qualification_status: 'new' as const,
   qualification_notes: null,
   converted_client_id: null,
