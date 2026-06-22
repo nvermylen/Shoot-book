@@ -13,6 +13,61 @@
 
 ---
 
+### LENS-D-019 — Dedup is app-enforced; unique index deferred to async ingestion
+**Date:** 2026-06-22
+**Phase:** Phase 1 | Sprint 3
+**Status:** ✅ Active
+
+**Decision:** LeadAgent dedup uses an app-level query (`intent_summary LIKE '[src:{id}]%'`) to detect duplicate source messages before creating a lead. No database-level unique constraint exists yet.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| App-level query (chosen for now) | Works today; no migration required; sufficient for single-process sequential ingestion | Race condition under concurrent ingestion; no DB enforcement |
+| Unique partial index on `(photographer_id, source_message_id_prefix)` | DB-enforced; race-proof | Requires a column or expression index on a prefix; adds migration; overkill for sequential-only ingestion in Sprint 3 |
+| Separate `source_message_id` column + unique index | Cleanest long-term | Schema change + migration + backfill; not justified until async ingestion exists |
+
+**Choice:** App-level for Sprint 3.
+
+**Rationale:** The current ingestion path is synchronous and single-process — app-level dedup is sufficient. When ingestion becomes async (queue-driven, webhook-triggered), a unique index must back this to close the race window. The `[src:{id}]` prefix convention in `intent_summary` is the dedup key for now.
+
+**Implications:**
+- LeadAgent checks `findLeadBySourceMessage()` before `createLead()`.
+- Under concurrent ingestion, a duplicate lead could slip through. Acceptable for now.
+- When async ingestion lands, add a unique partial index (or a dedicated `source_message_id` column).
+
+**Revisit Trigger:** Async lead ingestion (webhook-triggered or queue-driven) ships.
+
+---
+
+### LENS-D-018 — Agent evals are fixture-only; CI-gated
+**Date:** 2026-06-22
+**Phase:** Phase 1 | Sprint 3
+**Status:** ✅ Active
+
+**Decision:** Agent eval tests replay frozen gateway responses (fixtures), never make live LLM calls. The eval suite runs as a dedicated CI job (`test-evals`). Live model validation happens at fixture-recording time, not per-push.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Fixture-only evals (chosen) | Deterministic; no API key needed in CI; fast; tests agent logic, not model quality | Stale fixtures can mask model regressions; requires manual fixture re-recording when prompts change |
+| Live LLM evals in CI | Tests real model behavior every push | Non-deterministic; slow; requires API key as CI secret; flaky by nature; expensive |
+| No evals in CI, local-only | Simple | Same rot trajectory as RLS before D-016 |
+
+**Choice:** Fixture-only, CI-gated.
+
+**Rationale:** Agent evals exist to verify that deterministic agent code (decision mapping, ERP writes, event publishing) behaves correctly given a known model output. The model's judgment quality is validated once when the fixture is recorded. Per-push CI re-verification of model quality is the wrong test — it's non-deterministic, slow, and expensive. Fixtures make evals as reliable and fast as unit tests.
+
+**Implications:**
+- `npm run test:evals` runs in a `test-evals` CI job, no secrets required.
+- Gateway eval mode returns registered fixtures instead of calling the Anthropic API.
+- When a prompt version changes, affected fixtures must be re-recorded against the new prompt and re-frozen.
+- `LENS_GATEWAY_MODE=eval` is set in test setup, not in CI env.
+
+**Revisit Trigger:** A model regression slips through that fixture evals couldn't catch (e.g., a prompt change that passes Zod validation but produces semantically wrong judgments). At that point, add a periodic live-model smoke test on a schedule, not per-push.
+
+---
+
 ### LENS-D-016 — RLS verified in CI via dedicated test project, fails-closed
 **Date:** 2026-06-21
 **Phase:** Phase 1 | Sprint 2
@@ -499,6 +554,8 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-019 | Dedup app-enforced; unique index deferred | 2026-06-22 | Architecture | ✅ Active |
+| LENS-D-018 | Agent evals fixture-only, CI-gated | 2026-06-22 | Architecture | ✅ Active |
 | LENS-D-015 | ERP write-then-publish non-atomicity | 2026-06-19 | Architecture | ✅ Active |
 | LENS-D-014 | Eval harness bypasses gateway in Sprint 2 | 2026-05-09 | Architecture | ✅ Active |
 | LENS-D-013 | Gateway logs stdout-only for Sprint 2 | 2026-05-09 | Architecture | ✅ Active |
@@ -527,4 +584,4 @@ These have been flagged but not yet resolved. Each gets a numbered entry above w
 
 ---
 
-*Lens | Decisions Log | Last updated: 2026-05-04*
+*Lens | Decisions Log | Last updated: 2026-06-22*

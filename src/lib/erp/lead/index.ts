@@ -4,6 +4,41 @@ import type { ErpResult } from '../types';
 import { toErpError, notFound, validationError } from '../types';
 import { publish } from '@/lib/events/bus';
 
+export async function findLeadBySourceMessage(
+  supabase: SupabaseClient,
+  photographerId: string,
+  sourceMessageId: string,
+): Promise<ErpResult<Lead | null>> {
+  const { data, error } = await supabase
+    .from('lead')
+    .select('*')
+    .eq('photographer_id', photographerId)
+    .like('intent_summary', `[src:${sourceMessageId}]%`)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error) return { data: null, error: toErpError(error) };
+  return { data: data ?? null, error: null };
+}
+
+export async function updateLeadNotes(
+  supabase: SupabaseClient,
+  id: string,
+  qualificationNotes: string,
+): Promise<ErpResult<Lead>> {
+  const { data, error } = await supabase
+    .from('lead')
+    .update({ qualification_notes: qualificationNotes })
+    .eq('id', id)
+    .is('deleted_at', null)
+    .select()
+    .single();
+
+  if (error) return { data: null, error: toErpError(error) };
+  if (!data) return { data: null, error: notFound('lead', id) };
+  return { data, error: null };
+}
+
 export async function getLead(
   supabase: SupabaseClient,
   id: string,
