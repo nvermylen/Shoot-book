@@ -24,6 +24,12 @@ export interface LeadQualifiedEvent extends BaseEvent {
   qualification_status: LeadQualificationStatus;
 }
 
+export interface LeadNeedsInfoEvent extends BaseEvent {
+  type: 'lead.needs_info';
+  lead_id: string;
+  missing_fields: string[];
+}
+
 export interface LeadConvertedEvent extends BaseEvent {
   type: 'lead.converted';
   lead_id: string;
@@ -98,6 +104,7 @@ export interface GmailMessageReceivedEvent extends BaseEvent {
 export type DomainEvent =
   | LeadCreatedEvent
   | LeadQualifiedEvent
+  | LeadNeedsInfoEvent
   | LeadConvertedEvent
   | ClientCreatedEvent
   | ClientDeletedEvent

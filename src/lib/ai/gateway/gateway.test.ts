@@ -76,7 +76,7 @@ describe('gateway', () => {
       expect(result.content).toEqual([{ type: 'text', text: 'Hello' }]);
       expect(result.stopReason).toBe('end_turn');
       expect(result.usage).toEqual({ inputTokens: 100, outputTokens: 50 });
-      expect(result.promptVersion).toBe('lead.v0-stub');
+      expect(result.promptVersion).toBe('lead.v1');
       expect(result.modelUsed).toBe('claude-haiku-4-5-20251001');
       expect(result.latencyMs).toEqual(expect.any(Number));
       expect(result.retryCount).toBe(0);
@@ -183,16 +183,50 @@ describe('gateway', () => {
   });
 
   describe('eval mode', () => {
-    it('throws GatewayEvalNotConfiguredError and does not call SDK', async () => {
+    it('throws GatewayValidationError when fixtureKey is missing', async () => {
       process.env.LENS_GATEWAY_MODE = 'eval';
 
       await expect(callAgent(makeRequest())).rejects.toThrow(
-        GatewayEvalNotConfiguredError,
+        GatewayValidationError,
       );
       await expect(callAgent(makeRequest())).rejects.toThrow(
-        /fixture provider/,
+        /fixtureKey/,
       );
       expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('throws GatewayEvalNotConfiguredError when fixture not found', async () => {
+      process.env.LENS_GATEWAY_MODE = 'eval';
+
+      await expect(
+        callAgent(makeRequest({
+          metadata: { requestId: 'req-001', workspaceId: 'ws-001', userId: 'user-001', fixtureKey: 'nonexistent' },
+        })),
+      ).rejects.toThrow(GatewayEvalNotConfiguredError);
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('returns fixture response when fixture exists', async () => {
+      const { registerFixture, clearFixtures } = await import('./fixtures');
+      clearFixtures();
+      registerFixture('lead', 'test-fixture', {
+        content: [{ type: 'text', citations: null, text: 'fixture output' }],
+        stopReason: 'end_turn',
+      });
+
+      process.env.LENS_GATEWAY_MODE = 'eval';
+
+      const result = await callAgent(makeRequest({
+        metadata: { requestId: 'req-001', workspaceId: 'ws-001', userId: 'user-001', fixtureKey: 'test-fixture' },
+      }));
+
+      expect(result.content).toEqual([{ type: 'text', citations: null, text: 'fixture output' }]);
+      expect(result.modelUsed).toBe('fixture:test-fixture');
+      expect(result.promptVersion).toBe('lead.v1');
+      expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
+      expect(mockCreate).not.toHaveBeenCalled();
+
+      clearFixtures();
     });
   });
 
@@ -228,7 +262,7 @@ describe('gateway', () => {
         expect.objectContaining({
           requestId: 'req-001',
           agentId: 'lead',
-          promptVersion: 'lead.v0-stub',
+          promptVersion: 'lead.v1',
           modelUsed: 'claude-haiku-4-5-20251001',
           inputTokens: 100,
           outputTokens: 50,

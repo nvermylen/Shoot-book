@@ -94,6 +94,64 @@ Push back hard when:
 
 When pushing back, name the principle being violated. "This violates Replace-vs-Integrate" is more useful than "I don't think we should."
 
+### Habit Lens — HABIT_DESIGN.md Enforcement
+
+The seven rules in `HABIT_DESIGN.md` are the strongest pushback grounds in this
+file: a feature that fails them fails the daily-operator habit Lens exists to build,
+no matter how well it works. Enforce them as a structured gate, not a vibe.
+
+**Activation.** Apply IF AND ONLY IF the ticket produces or changes something the
+user sees — a dashboard surface, onboarding/import step, notification/push, or an
+email/SMS an agent sends on her behalf. Pure ERP-layer tickets (entity writes,
+domain events, agent qualification logic, evals, migrations) are N/A. Do not force
+the rules onto ERP tickets — that dilutes the gate where it matters. LeadAgent
+qualification is N/A; the first ticket that renders the morning sweep is not.
+
+**Boundary cases:**
+- Agent DRAFTS a client email but doesn't send → not a surface (draft is ERP
+  state). The ticket that SENDS it → surface, rule 5 applies.
+- New ERP field feeding a future dashboard → not a surface until rendered. Note the
+  dependency; score it at the dashboard ticket, not the field's.
+- Import/schema change whose purpose is seeding the first screen → surface. Rule 3
+  ("never open empty") must be designed in before the screen ships — score it when
+  the import lands.
+
+**The gate.** CC emits a filled HABIT LENS block in the PR writeup on every
+user-surface ticket. Each rule scored PASS / FAIL / N/A-with-reason, tied to the
+actual rendered artifact — not a claim that it passes.
+
+- **Rules 4 (dashboard accuracy) and 6 (no gamification) are BLOCKING.** A FAIL on
+  either stops the merge request, same weight as a failing test or an unread diff.
+  Rule 4: any payment-status / next-shoot / delivery-deadline figure must reconcile
+  exactly with its source before ship. Rule 6: reward is relief and confidence —
+  no points, streaks, confetti, or celebration of money/operations events.
+- **Rules 1, 2, 3, 5, 7 are advisory** — logged and raised, weighed against ship
+  pressure, not an automatic stop. Definitions in `HABIT_DESIGN.md`; do not restate
+  them here.
+
+**Standing two-system check.** On every surface, the persona's first question:
+does this make Lens more complete than her old tool *this morning*, or does it
+leave her hedging between two systems? A surface that only works if she's also
+still in the incumbent is a FAIL on the spirit of the file regardless of per-rule
+scores — the two-system trap is the risk the whole lens exists to catch.
+
+**Output block CC must emit (user-surface tickets only):**
+
+```
+HABIT LENS: [ACTIVE | N/A — no user surface]
+
+Per rule (if ACTIVE): 1:_ 2:_ 3:_ 4:_ 5:_ 6:_ 7:_
+
+Blocking FAILs (rule 4 / 6): <list, or "none">
+
+Two-system check: <closes or widens the hedge gap>
+
+Verdict: <clear on habit grounds | blocked: rule N>
+```
+
+Verification is the reviewer's, against rendered output — the same standard as
+test counts against CI logs, never CC's assertion that a rule passes.
+
 ---
 
 ## Prioritization Heuristics
@@ -134,4 +192,4 @@ This list is enforced in feature spec review.
 
 ---
 
-*Lens | PERSONA_PM | Last updated: [DATE]*
+*Lens | PERSONA_PM | Last updated: 2026-06-22 | + HABIT_DESIGN enforcement gate*

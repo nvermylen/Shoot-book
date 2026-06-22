@@ -13,6 +13,90 @@
 
 ---
 
+### LENS-D-020 — Habit lens is a conditional review gate; CC emits, reviewer verifies
+**Date:** 2026-06-22
+**Phase:** Phase 1 | Sprint 3
+**Status:** ✅ Active
+
+**Decision:** The seven HABIT_DESIGN.md rules apply to user-surface tickets only (dashboard, onboarding, notification, agent-sent comms); N/A for pure ERP-layer work. Rules 4 (dashboard accuracy) and 6 (no gamification) are blocking merge-stoppers; the other five are advisory. CC emits a filled HABIT LENS block on user-surface PRs; reviewer verifies FAILs against rendered output.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| CC-emitted structured block (chosen) | Consistent with existing discipline (test counts, diffs); artifact-based review; obligation visible at session start via PERSONA_PM.md | Adds output to PR writeup |
+| Reviewer-only mental checklist | No CC overhead | Leaves no artifact or trace; reviewer-dependent; no enforcement consistency |
+| Apply to all tickets unconditionally | Simpler rule | Dilutes the gate on ERP-only tickets where no surface exists to score |
+
+**Choice:** CC emits on user-surface tickets; reviewer verifies against rendered output.
+
+**Rationale:** Lens's review discipline is artifact-based — CC produces structured output (test counts, eval results, diffs), reviewer verifies against the real thing. The habit lens follows the same pattern. Mechanics live in `PERSONA_PM.md` (the file CC reads for scope decisions); rule definitions stay in `HABIT_DESIGN.md` to avoid duplication drift. `CLAUDE.md` carries pointers only.
+
+**Implications:**
+- Every user-surface PR includes a HABIT LENS output block.
+- Rule 4 / 6 FAIL = merge blocker, same weight as a failing test.
+- Rules 1, 2, 3, 5, 7 are advisory — logged, not blocking.
+- Pure ERP tickets (LeadAgent qualification, entity writes, evals) are N/A — no forced scoring.
+
+**Revisit Trigger:** First user-surface ticket ships (likely the morning-sweep dashboard). Verify the gate works in practice — is the output block useful to the reviewer, or is it ceremony?
+
+---
+
+### LENS-D-019 — source_message_id stored as interim intent_summary sentinel pending dedicated column
+**Date:** 2026-06-22
+**Phase:** Phase 1 | Sprint 3
+**Status:** ✅ Active
+
+**Decision:** LENS-015 enforces lead idempotency by `source_message_id`, but adding a real column requires a migration deferred past 015. Interim: the ID is stored as a trailing namespaced sentinel (`\n\n[lens:src_msg_id=<id>]`) appended to `intent_summary`, matched by anchored LIKE (`%[lens:src_msg_id=<id>]`). This is acknowledged interim debt. No database-level unique constraint exists yet. RLS is the sole tenant boundary — `findLeadBySourceMessage` does not filter by `photographer_id` at the app layer.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Trailing sentinel in `intent_summary` (chosen) | Works today; no migration; deliberate namespaced format avoids content collision; single write site | Structured key in a free-text field; requires strip-on-display; LIKE scan |
+| Leading prefix (`[src:{id}] ...`) | Simpler LIKE anchor | Collides with real content starting with `[src:`; written inconsistently across code paths |
+| Separate `source_message_id` column + unique index | Cleanest long-term; DB-enforced dedup | Schema change + migration + backfill; not justified until async ingestion exists |
+
+**Choice:** Trailing sentinel for Sprint 3; dedicated column at next migration.
+
+**Rationale:** The current ingestion path is synchronous and single-process — app-level dedup is sufficient. The `[lens:src_msg_id=<id>]` namespace avoids collision with user-authored content. The sentinel is appended in exactly one code path (`run.ts`, when constructing `intentSummary` for `createLead`). When reading `intent_summary` back for display (LENS-016+), the sentinel must be stripped.
+
+**Implications:**
+- LeadAgent checks `findLeadBySourceMessage()` before `createLead()`.
+- `findLeadBySourceMessage` relies on RLS for tenant scoping — no app-layer `photographer_id` filter.
+- Under concurrent ingestion, a duplicate lead could slip through. Acceptable while ingestion is synchronous/manual.
+- Display layer must strip the trailing sentinel when surfacing `intent_summary` to users.
+
+**Revisit Trigger:** Next migration runs — add a real `lead.source_message_id` column with a unique index on `(photographer_id, source_message_id)`. That index becomes the real idempotency enforcement; the app-level check + sentinel are removed; existing sentinels are backfilled into the column.
+
+---
+
+### LENS-D-018 — Agent evals are fixture-only; CI-gated
+**Date:** 2026-06-22
+**Phase:** Phase 1 | Sprint 3
+**Status:** ✅ Active
+
+**Decision:** Agent eval tests replay frozen gateway responses (fixtures), never make live LLM calls. The eval suite runs as a dedicated CI job (`test-evals`). Live model validation happens at fixture-recording time, not per-push.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Fixture-only evals (chosen) | Deterministic; no API key needed in CI; fast; tests agent logic, not model quality | Stale fixtures can mask model regressions; requires manual fixture re-recording when prompts change |
+| Live LLM evals in CI | Tests real model behavior every push | Non-deterministic; slow; requires API key as CI secret; flaky by nature; expensive |
+| No evals in CI, local-only | Simple | Same rot trajectory as RLS before D-016 |
+
+**Choice:** Fixture-only, CI-gated.
+
+**Rationale:** Agent evals exist to verify that deterministic agent code (decision mapping, ERP writes, event publishing) behaves correctly given a known model output. The model's judgment quality is validated once when the fixture is recorded. Per-push CI re-verification of model quality is the wrong test — it's non-deterministic, slow, and expensive. Fixtures make evals as reliable and fast as unit tests.
+
+**Implications:**
+- `npm run test:evals` runs in a `test-evals` CI job, no secrets required.
+- Gateway eval mode returns registered fixtures instead of calling the Anthropic API.
+- When a prompt version changes, affected fixtures must be re-recorded against the new prompt and re-frozen.
+- `LENS_GATEWAY_MODE=eval` is set in test setup, not in CI env.
+
+**Revisit Trigger:** A model regression slips through that fixture evals couldn't catch (e.g., a prompt change that passes Zod validation but produces semantically wrong judgments). At that point, add a periodic live-model smoke test on a schedule, not per-push.
+
+---
+
 ### LENS-D-016 — RLS verified in CI via dedicated test project, fails-closed
 **Date:** 2026-06-21
 **Phase:** Phase 1 | Sprint 2
@@ -499,6 +583,8 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-019 | Dedup app-enforced; unique index deferred | 2026-06-22 | Architecture | ✅ Active |
+| LENS-D-018 | Agent evals fixture-only, CI-gated | 2026-06-22 | Architecture | ✅ Active |
 | LENS-D-015 | ERP write-then-publish non-atomicity | 2026-06-19 | Architecture | ✅ Active |
 | LENS-D-014 | Eval harness bypasses gateway in Sprint 2 | 2026-05-09 | Architecture | ✅ Active |
 | LENS-D-013 | Gateway logs stdout-only for Sprint 2 | 2026-05-09 | Architecture | ✅ Active |
@@ -527,4 +613,4 @@ These have been flagged but not yet resolved. Each gets a numbered entry above w
 
 ---
 
-*Lens | Decisions Log | Last updated: 2026-05-04*
+*Lens | Decisions Log | Last updated: 2026-06-22*

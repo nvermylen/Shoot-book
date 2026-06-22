@@ -5,6 +5,8 @@ import { toJSONSchema } from 'zod';
 import type { AgentId } from '@/types/agent';
 import { getTool } from '@/lib/ai/tools/registry';
 import { AGENT_MODELS } from './models';
+import { getActiveVersion } from './versions';
+import { getFixture } from './fixtures';
 
 export class GatewayEvalNotConfiguredError extends Error {
   constructor() {
@@ -41,6 +43,7 @@ export interface GatewayRequest {
     requestId: string;
     workspaceId: string;
     userId: string;
+    fixtureKey?: string;
   };
 }
 
@@ -104,10 +107,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function getActiveVersion(agentId: AgentId): string {
-  // TODO: wire up real prompt registry when first agent ships (Sprint 3 / LeadAgent)
-  return `${agentId}.v0-stub`;
-}
+// getActiveVersion is now in ./versions.ts
 
 function resolveTools(toolNames: string[]): Anthropic.Tool[] {
   return toolNames.map((name) => {
@@ -168,7 +168,7 @@ function logFailure(
     requestId: req.metadata.requestId,
     agentId: req.agentId,
     promptVersion: VALID_AGENT_IDS.has(req.agentId)
-      ? `${req.agentId}.v0-stub`
+      ? getActiveVersion(req.agentId as AgentId)
       : 'unknown',
     modelUsed:
       AGENT_MODELS[req.agentId as AgentId] ?? 'unknown',
@@ -217,8 +217,38 @@ export async function callAgent(
   const model = AGENT_MODELS[req.agentId];
 
   if (mode === 'eval') {
-    logFailure(req, 'GatewayEvalNotConfiguredError', 0, 0);
-    throw new GatewayEvalNotConfiguredError();
+    const fixtureKey = req.metadata.fixtureKey;
+    if (!fixtureKey) {
+      logFailure(req, 'GatewayValidationError', 0, 0);
+      throw new GatewayValidationError('Eval mode requires metadata.fixtureKey');
+    }
+    const fixture = getFixture(req.agentId, fixtureKey);
+    if (!fixture) {
+      logFailure(req, 'GatewayEvalNotConfiguredError', 0, 0);
+      throw new GatewayEvalNotConfiguredError();
+    }
+    logGatewayCall({
+      requestId: req.metadata.requestId,
+      agentId: req.agentId,
+      promptVersion,
+      modelUsed: `fixture:${fixtureKey}`,
+      inputTokens: 0,
+      outputTokens: 0,
+      latencyMs: 0,
+      stopReason: fixture.stopReason,
+      retryCount: 0,
+      mode,
+      status: 'ok',
+    });
+    return {
+      content: fixture.content,
+      stopReason: fixture.stopReason,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      promptVersion,
+      modelUsed: `fixture:${fixtureKey}`,
+      latencyMs: 0,
+      retryCount: 0,
+    };
   }
 
   let tools: Anthropic.Tool[] | undefined;
