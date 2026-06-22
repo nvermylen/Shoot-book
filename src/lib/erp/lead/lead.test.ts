@@ -50,6 +50,7 @@ const LEAD_ROW = {
   email: 'jane@example.com',
   phone: null,
   source: 'web_form',
+  source_message_id: null,
   intent_summary: null,
   qualification_status: 'new',
   qualification_notes: null,
