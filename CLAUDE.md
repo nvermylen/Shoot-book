@@ -49,13 +49,14 @@ If a Claude Code question can be answered by these five files, the answer is in 
 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
-Current sprint:      Sprint 2 — ERP completion + AI infrastructure (CLOSING)
-Last ticket:         LENS-014  (CI guards + RLS-in-CI + error-handling gate)
+Current sprint:      Sprint 2 — CLOSED (all tickets 003–014 + 012 merged)
+Next sprint:         Sprint 3 — LeadAgent + agent infrastructure
+Last ticket:         LENS-012  (docs reconciliation — final Sprint 2 ticket)
 Next ticket:         LENS-015  (Sprint 3 — LeadAgent)
 Last migration:      migration_002_phase1_erp.sql
-Next migration:      (none planned — LENS-004 through LENS-014 are TS only)
-Last PR branch:      LENS-014-ci-guards
-Active feature spec: docs/features/Phase1/Sprint2_ERP_AI_Infrastructure.md
+Next migration:      (TBD — LeadAgent may need agent-specific tables)
+Last PR branch:      LENS-012-docs-reconciliation
+Active feature spec: (Sprint 3 spec not yet written)
 ```
 
 ---
