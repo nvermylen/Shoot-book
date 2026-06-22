@@ -44,15 +44,14 @@ export async function runLeadAgent(
   }
 
   // Step 2: Create lead via ERP module
-  const sentinel = `\n\n[lens:src_msg_id=${payload.source_message_id}]`;
-  const intentSummary = (payload.intent_summary ?? '') + sentinel;
   const createResult = await createLead(supabase, {
     photographer_id: payload.photographer_id,
     display_name: payload.display_name,
     email: payload.email,
     phone: payload.phone,
     source: payload.source,
-    intent_summary: intentSummary,
+    source_message_id: payload.source_message_id,
+    intent_summary: payload.intent_summary ?? '',
     received_at: payload.received_at,
   });
 

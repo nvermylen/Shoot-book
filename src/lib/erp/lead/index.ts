@@ -11,7 +11,7 @@ export async function findLeadBySourceMessage(
   const { data, error } = await supabase
     .from('lead')
     .select('*')
-    .like('intent_summary', `%[lens:src_msg_id=${sourceMessageId}]`)
+    .eq('source_message_id', sourceMessageId)
     .is('deleted_at', null)
     .maybeSingle();
 
@@ -74,6 +74,7 @@ export async function createLead(
     email: string;
     phone?: string;
     source: LeadSource;
+    source_message_id?: string;
     intent_summary?: string;
     received_at: string;
   },

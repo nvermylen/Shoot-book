@@ -109,6 +109,7 @@ export interface Lead {
   email: string;
   phone: string | null;
   source: LeadSource;
+  source_message_id: string | null;
   intent_summary: string | null;
   qualification_status: LeadQualificationStatus;
   qualification_notes: string | null;
