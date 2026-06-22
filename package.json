@@ -12,7 +12,7 @@
     "lint": "eslint",
     "test": "vitest run --exclude 'tests/rls/**' --exclude 'src/lib/ai/agents/**/*.eval.test.ts'",
     "test:rls": "vitest run tests/rls/",
-    "test:evals": "vitest run .eval.test.",
+    "test:evals": "vitest run --dir src/lib/ai/agents eval.test",
     "check:error-handling": "bash scripts/check-supabase-error-handling.sh src",
     "evals": "tsx src/lib/ai/evals/run-evals.ts"
   },
