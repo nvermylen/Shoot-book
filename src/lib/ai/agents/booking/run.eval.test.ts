@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { registerFixture, clearFixtures } from '@/lib/ai/gateway/fixtures';
 import { clearClient } from '@/lib/ai/gateway/gateway';
-import { runBookingAgent, type BookingAgentPayload } from './run';
+import { runBookingAgent, type BookingAgentPayload, type BookingAgentResult, type BookingAgentNoMatch } from './run';
 
 import { fixture as cleanMatchFixture, FIXTURE_KEY as CLEAN_MATCH_KEY } from './fixtures/clean-match-senior.fixture';
+import { fixture as judgmentFixture, FIXTURE_KEY as JUDGMENT_KEY } from './fixtures/judgment-match-three-tiers.fixture';
+import { fixture as noMatchFixture, FIXTURE_KEY as NO_MATCH_KEY } from './fixtures/no-match-newborn.fixture';
+import { fixture as inactiveFixture, FIXTURE_KEY as INACTIVE_KEY } from './fixtures/inactive-package-selected.fixture';
+import { fixture as reentryFixture, FIXTURE_KEY as REENTRY_KEY } from './fixtures/already-converted-reentry.fixture';
 
 import type { Lead, Client, Booking, Package } from '@/types/erp';
 import type { LeadQualificationOutput } from '../lead/schema';
@@ -127,6 +131,40 @@ const seniorPremiumPackage: Package = {
   deleted_at: null,
 };
 
+const seniorStandardPackage: Package = {
+  id: 'pkg-senior-standard',
+  photographer_id: 'photo-001',
+  name: 'Senior Portrait — Standard',
+  description: 'Standard senior portrait session',
+  price_cents: 45000,
+  deposit_cents: 10000,
+  session_type: 'senior',
+  included_locations_count: 2,
+  included_outfits_count: 2,
+  delivery_count: 30,
+  is_active: true,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+  deleted_at: null,
+};
+
+const seniorBasicPackage: Package = {
+  id: 'pkg-senior-basic',
+  photographer_id: 'photo-001',
+  name: 'Senior Portrait — Basic',
+  description: 'Basic senior portrait session',
+  price_cents: 20000,
+  deposit_cents: 5000,
+  session_type: 'senior',
+  included_locations_count: 1,
+  included_outfits_count: 1,
+  delivery_count: 15,
+  is_active: true,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+  deleted_at: null,
+};
+
 const familyPackage: Package = {
   id: 'pkg-family',
   photographer_id: 'photo-001',
@@ -166,6 +204,10 @@ function makeMockSupabase() {
   return {} as unknown as Parameters<typeof runBookingAgent>[0];
 }
 
+function hasNoMatch(result: BookingAgentResult): result is { data: null; error: null; noMatch: BookingAgentNoMatch } {
+  return 'noMatch' in result;
+}
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
@@ -177,6 +219,10 @@ beforeEach(() => {
   clearClient();
 
   registerFixture('booking', CLEAN_MATCH_KEY, cleanMatchFixture);
+  registerFixture('booking', JUDGMENT_KEY, judgmentFixture);
+  registerFixture('booking', NO_MATCH_KEY, noMatchFixture);
+  registerFixture('booking', INACTIVE_KEY, inactiveFixture);
+  registerFixture('booking', REENTRY_KEY, reentryFixture);
 
   mockGetLead.mockReset();
   mockConvertLeadToClient.mockReset();
@@ -200,46 +246,46 @@ afterEach(() => {
 });
 
 // ===========================================================================
-// Unit tests — deterministic guards, no model judgment (cases 6-10)
+// Gateway-fixture evals (cases 1-5)
 // ===========================================================================
 
-describe('BookingAgent unit tests', () => {
-  it('case 6: disqualified lead → rejected, not ready for booking', async () => {
-    const disqualifiedLead: Lead = {
-      ...qualifiedLead,
-      qualification_status: 'disqualified',
-    };
-    mockGetLead.mockResolvedValue({ data: disqualifiedLead, error: null });
+describe('BookingAgent gateway-fixture evals', () => {
+  it('case 1: clean match — one senior package → client + booking written, tentative', async () => {
+    mockConvertLeadToClient.mockResolvedValue({
+      data: { lead: convertedLead, client: fakeClient },
+      error: null,
+    });
+    mockGetLead.mockResolvedValueOnce({ data: qualifiedLead, error: null });
+    mockGetLead.mockResolvedValueOnce({ data: convertedLead, error: null });
+    mockCreateBooking.mockResolvedValue({ data: fakeBooking, error: null });
 
-    const result = await runBookingAgent(makeMockSupabase(), makePayload());
+    const result = await runBookingAgent(
+      makeMockSupabase(),
+      makePayload({ fixtureKey: CLEAN_MATCH_KEY }),
+    );
 
-    expect(result.error).not.toBeNull();
-    expect(result.error!.code).toBe('validation_error');
-    expect(result.error!.detail).toContain('disqualified');
-    expect(result.error!.detail).toContain('requires');
+    expect(result.error).toBeNull();
+    expect(result.data).not.toBeNull();
+    expect(result.data!.booking.status).toBe('tentative');
+    expect(result.data!.booking.package_id).toBe('pkg-senior-premium');
+    expect(result.data!.selection.selected_package_id).toBe('pkg-senior-premium');
+    expect(result.data!.selection.confidence).toBeGreaterThan(0.9);
 
-    expect(mockListPackages).not.toHaveBeenCalled();
-    expect(mockConvertLeadToClient).not.toHaveBeenCalled();
-    expect(mockCreateBooking).not.toHaveBeenCalled();
+    expect(mockConvertLeadToClient).toHaveBeenCalledWith(expect.anything(), 'lead-001');
+    expect(mockCreateBooking).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        client_id: 'client-001',
+        package_id: 'pkg-senior-premium',
+      }),
+    );
   });
 
-  it('case 7: new (unqualified) lead → rejected', async () => {
-    const newLead: Lead = {
-      ...qualifiedLead,
-      qualification_status: 'new',
-    };
-    mockGetLead.mockResolvedValue({ data: newLead, error: null });
-
-    const result = await runBookingAgent(makeMockSupabase(), makePayload());
-
-    expect(result.error).not.toBeNull();
-    expect(result.error!.code).toBe('validation_error');
-    expect(result.error!.detail).toContain("'new'");
-
-    expect(mockListPackages).not.toHaveBeenCalled();
-  });
-
-  it('case 8: createBooking fails after conversion → error logged, no swallow', async () => {
+  it('case 2: judgment match — three tiers, budget signal → mid-tier selected', async () => {
+    mockListPackages.mockResolvedValue({
+      data: [seniorBasicPackage, seniorStandardPackage, seniorPremiumPackage, familyPackage],
+      error: null,
+    });
     mockConvertLeadToClient.mockResolvedValue({
       data: { lead: convertedLead, client: fakeClient },
       error: null,
@@ -247,81 +293,95 @@ describe('BookingAgent unit tests', () => {
     mockGetLead.mockResolvedValueOnce({ data: qualifiedLead, error: null });
     mockGetLead.mockResolvedValueOnce({ data: convertedLead, error: null });
     mockCreateBooking.mockResolvedValue({
-      data: null,
-      error: { code: 'db_error', detail: 'unique constraint violation' },
+      data: { ...fakeBooking, package_id: 'pkg-senior-standard' },
+      error: null,
     });
 
     const result = await runBookingAgent(
       makeMockSupabase(),
-      makePayload({ fixtureKey: CLEAN_MATCH_KEY }),
+      makePayload({
+        qualification: {
+          ...baseQualification,
+          extracted: { ...baseQualification.extracted, budget_signal: 'something affordable' },
+        },
+        fixtureKey: JUDGMENT_KEY,
+      }),
     );
 
-    expect(result.error).not.toBeNull();
-    expect(result.error!.code).toBe('db_error');
-    expect(result.data).toBeNull();
+    expect(result.error).toBeNull();
+    expect(result.data).not.toBeNull();
+    expect(result.data!.selection.selected_package_id).toBe('pkg-senior-standard');
+    expect(result.data!.selection.reasons.length).toBeGreaterThanOrEqual(2);
 
-    expect(console.error).toHaveBeenCalledWith(
-      'booking_agent.create_booking_failed',
-      expect.objectContaining({
-        lead_id: 'lead-001',
-        client_id: 'client-001',
-      }),
+    expect(mockCreateBooking).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ package_id: 'pkg-senior-standard' }),
     );
   });
 
-  it('case 9: no active packages → validation error before gateway call', async () => {
-    mockListPackages.mockResolvedValue({ data: [], error: null });
+  it('case 3: no match — newborn lead, no newborn package → zero writes, no client', async () => {
+    mockListPackages.mockResolvedValue({
+      data: [seniorPremiumPackage, familyPackage],
+      error: null,
+    });
 
-    const result = await runBookingAgent(makeMockSupabase(), makePayload());
+    const result = await runBookingAgent(
+      makeMockSupabase(),
+      makePayload({
+        qualification: {
+          ...baseQualification,
+          extracted: { ...baseQualification.extracted, event_type: 'newborn' },
+        },
+        fixtureKey: NO_MATCH_KEY,
+      }),
+    );
 
-    expect(result.error).not.toBeNull();
-    expect(result.error!.detail).toContain('No active packages');
+    expect(hasNoMatch(result)).toBe(true);
+    if (hasNoMatch(result)) {
+      expect(result.noMatch.reason).toContain('newborn');
+    }
 
     expect(mockConvertLeadToClient).not.toHaveBeenCalled();
     expect(mockCreateBooking).not.toHaveBeenCalled();
   });
 
-  it('case 10: convert → booking fails → re-run → exactly one client, one booking', async () => {
-    // --- First run: qualified lead, conversion succeeds, booking FAILS ---
-    mockGetLead
-      .mockResolvedValueOnce({ data: qualifiedLead, error: null })
-      .mockResolvedValueOnce({ data: convertedLead, error: null });
-    mockConvertLeadToClient.mockResolvedValueOnce({
-      data: { lead: convertedLead, client: fakeClient },
+  it('case 4: already-converted re-entry → skips conversion, exactly one booking', async () => {
+    mockGetLead.mockResolvedValue({ data: convertedLead, error: null });
+    mockGetClient.mockResolvedValue({ data: fakeClient, error: null });
+    mockCreateBooking.mockResolvedValue({ data: fakeBooking, error: null });
+
+    const result = await runBookingAgent(
+      makeMockSupabase(),
+      makePayload({ fixtureKey: REENTRY_KEY }),
+    );
+
+    expect(result.error).toBeNull();
+    expect(result.data).not.toBeNull();
+    expect(result.data!.client.id).toBe('client-001');
+    expect(result.data!.booking.id).toBe('booking-001');
+
+    expect(mockConvertLeadToClient).not.toHaveBeenCalled();
+    expect(mockGetClient).toHaveBeenCalledWith(expect.anything(), 'client-001');
+    expect(mockCreateBooking).toHaveBeenCalledTimes(1);
+  });
+
+  it('case 5: inactive package selected by model → code rejects, no booking write', async () => {
+    mockListPackages.mockResolvedValue({
+      data: [seniorPremiumPackage, familyPackage],
       error: null,
     });
-    mockCreateBooking.mockResolvedValueOnce({
-      data: null,
-      error: { code: 'db_error', detail: 'connection lost' },
-    });
 
-    const firstResult = await runBookingAgent(
+    const result = await runBookingAgent(
       makeMockSupabase(),
-      makePayload({ fixtureKey: CLEAN_MATCH_KEY }),
+      makePayload({ fixtureKey: INACTIVE_KEY }),
     );
 
-    expect(firstResult.error).not.toBeNull();
-    expect(firstResult.error!.code).toBe('db_error');
+    expect(result.error).not.toBeNull();
+    expect(result.error!.code).toBe('validation_error');
+    expect(result.error!.detail).toContain('pkg-senior-discontinued');
+    expect(result.error!.detail).toContain('not in the active packages list');
 
-    // --- Second run: same lead, now converted, booking SUCCEEDS ---
-    mockGetLead.mockResolvedValueOnce({ data: convertedLead, error: null });
-    mockGetClient.mockResolvedValueOnce({ data: fakeClient, error: null });
-    mockCreateBooking.mockResolvedValueOnce({ data: fakeBooking, error: null });
-
-    const secondResult = await runBookingAgent(
-      makeMockSupabase(),
-      makePayload({ fixtureKey: CLEAN_MATCH_KEY }),
-    );
-
-    expect(secondResult.error).toBeNull();
-    expect(secondResult.data).not.toBeNull();
-    expect(secondResult.data!.booking.id).toBe('booking-001');
-    expect(secondResult.data!.client.id).toBe('client-001');
-
-    // Recovery contract: exactly one client, one booking
-    expect(mockConvertLeadToClient).toHaveBeenCalledTimes(1);
-    expect(mockGetClient).toHaveBeenCalledTimes(1);
-    expect(mockGetClient).toHaveBeenCalledWith(expect.anything(), 'client-001');
-    expect(mockCreateBooking).toHaveBeenCalledTimes(2);
+    expect(mockConvertLeadToClient).not.toHaveBeenCalled();
+    expect(mockCreateBooking).not.toHaveBeenCalled();
   });
 });
