@@ -298,19 +298,113 @@ A series of templated messages tied to a trigger (booking created, session appro
 
 ### `integration_credentials`
 Encrypted OAuth tokens per integration per photographer.
-- `id, photographer_id, service ('gmail' | 'quickbooks' | 'stripe' | 'calendar' | 'storage'), access_token (encrypted), refresh_token (encrypted), expires_at, scope (text[]), created_at, updated_at`
+- `id` (uuid PK)
+- `photographer_id` (uuid FK, unique with `service`)
+- `service` (text — 'gmail' | 'quickbooks' | 'stripe' | 'calendar' | 'storage')
+- `access_token_ciphertext` (bytea — AES-256-GCM encrypted)
+- `refresh_token_ciphertext` (bytea, nullable — AES-256-GCM encrypted)
+- `key_version` (int — rotation support, default 1)
+- `expires_at` (timestamptz, nullable)
+- `scope` (text[], nullable)
+- `created_at`, `updated_at`
 
-**RLS:** photographer-scoped, never returned to client.
+**RLS:** photographer-scoped (full CRUD), never returned to client.
 
 **See `SECURITY.md`** for encryption strategy.
 
 ---
 
+### `domain_event_log`
+Append-only log of every domain event. This table IS the version history for all entities — there are no row-level version columns. To reconstruct change history for any entity, query events by `type` prefix (e.g., `lead.%`) and `photographer_id`.
+- `id` (uuid PK)
+- `photographer_id` (uuid FK)
+- `type` (text — event type, e.g. `lead.created`, `lead.qualified`, `lead.converted`, `client.created`)
+- `payload` (jsonb — event-specific data, always includes entity ID and `occurred_at`)
+- `created_at`
+
+**RLS:** photographer-scoped. Append-only (SELECT + INSERT policies only, no UPDATE/DELETE).
+
+**Design decision:** No version columns on entity tables. The event log is the single source of change history. See DECISIONS_LOG (D-015) for the write-then-publish pattern that populates this table.
+
+---
+
 ### `agent_tool_call_log`
 Append-only log of every tool call by every agent.
-- `id, photographer_id, agent_id, tool_name, input_hash, output_hash, status, latency_ms, prompt_version, called_at`
+- `id` (uuid PK)
+- `photographer_id` (uuid FK)
+- `agent_id` (text)
+- `tool_name` (text)
+- `input_hash` (text — content hash, not raw input; ZDR posture)
+- `output_hash` (text, nullable)
+- `status` (text — 'ok' | 'error')
+- `latency_ms` (int, nullable)
+- `prompt_version` (text, nullable)
+- `called_at` (timestamptz)
 
-**RLS:** photographer-scoped.
+**RLS:** photographer-scoped. Append-only (SELECT + INSERT policies only, no UPDATE/DELETE).
+
+---
+
+## ERP Write API — `ErpResult<T>` Error Vocabulary
+
+All ERP write modules (`src/lib/erp/[entity]/index.ts`) return `ErpResult<T>`, a discriminated union defined in `src/lib/erp/types.ts`:
+
+```typescript
+type ErpResult<T> =
+  | { data: T; error: null; warning?: string }
+  | { data: null; error: ErpError; warning?: undefined };
+
+interface ErpError {
+  code: ErpErrorCode;
+  detail: string;  // raw Postgrest message or structured description — never the matchable field
+}
+
+type ErpErrorCode = 'not_found' | 'rls_denied' | 'db_error' | 'validation_error';
+```
+
+**Error codes (pinned vocabulary):**
+| Code | Meaning | When |
+|------|---------|------|
+| `not_found` | Entity does not exist (or is soft-deleted) | `.single()` returns null after filter |
+| `rls_denied` | RLS policy blocked the operation | Postgres error 42501 or message contains 'row-level security' |
+| `db_error` | Any other Postgres/Supabase error | Catch-all for non-RLS Postgrest errors |
+| `validation_error` | Business rule violation caught before DB call | e.g., converting an already-converted lead |
+
+**The `warning` field:** Present on success when a side-effect (event publishing) failed but the primary write succeeded. The pattern is `event_publish_failed: <message>`. Callers must check `warning` to detect event-trail gaps.
+
+**Mapping from Postgrest:** `toErpError()` in `src/lib/erp/types.ts` maps raw `PostgrestError` → `ErpError`. It classifies 42501 as `rls_denied`; everything else as `db_error`. The raw Postgrest message goes in `detail` — code matches on `code`, never on `detail`.
+
+---
+
+## Event-Trail-as-Versioning
+
+There are no `version` columns on any entity table. Change history is reconstructed from `domain_event_log`:
+
+- Every ERP write publishes a typed domain event (e.g., `lead.created`, `lead.qualified`, `client.created`).
+- Events carry the entity ID, photographer ID, and `occurred_at` timestamp in their payload.
+- To see all changes to a lead: `SELECT * FROM domain_event_log WHERE type LIKE 'lead.%' AND payload->>'lead_id' = $1 ORDER BY created_at`.
+
+This is a deliberate design choice, not a gap. Row-level version columns would duplicate state that the event log already captures, add write amplification on every update, and introduce consistency concerns between the column and the log.
+
+See DECISIONS_LOG D-015 for the write-then-publish non-atomicity tradeoff this creates.
+
+---
+
+## Test Infrastructure Topology
+
+| Environment | Supabase Project | Purpose |
+|-------------|-----------------|---------|
+| Production | `vvcuennzifsovbbylolx.supabase.co` | Live data (Morgan's studio) |
+| Test | `eqqfukokwtwqwcqqeneo.supabase.co` | RLS verification, integration tests |
+
+**Separation rules:**
+- Production creds live in `.env.local` (Vercel) — never in test config.
+- Test creds live in `.env.test` (gitignored) — never deployed.
+- CI injects test creds as GitHub secrets (`TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_ROLE_KEY`).
+- The CI workflow includes a host assertion: if `TEST_SUPABASE_URL` contains the production project ID (`vvcuennzifsovbbylolx`), the job hard-fails before connecting.
+- Both projects must have identical migrations applied. Migration application is manual (ANTI_PATTERNS #1).
+
+See DECISIONS_LOG D-016 for the architectural rationale.
 
 ---
 
@@ -339,4 +433,4 @@ See `DOMAIN_GLOSSARY.md` for the term-to-column mapping.
 
 ---
 
-*Lens | ERP Data Model | Last updated: [DATE]*
+*Lens | ERP Data Model | Last updated: 2026-06-21*
