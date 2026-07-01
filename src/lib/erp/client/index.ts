@@ -20,6 +20,18 @@ export async function getClient(
   return { data, error: null };
 }
 
+export async function countClients(
+  supabase: SupabaseClient,
+): Promise<ErpResult<number>> {
+  const { count, error } = await supabase
+    .from('client')
+    .select('*', { count: 'exact', head: true })
+    .is('deleted_at', null);
+
+  if (error) return { data: null, error: toErpError(error) };
+  return { data: count ?? 0, error: null };
+}
+
 export async function listClients(
   supabase: SupabaseClient,
 ): Promise<ErpResult<Client[]>> {
