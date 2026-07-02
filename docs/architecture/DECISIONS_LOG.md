@@ -13,6 +13,34 @@
 
 ---
 
+### LENS-D-022 — Client import defers address fields; report-don't-drop
+**Date:** 2026-06-22
+**Phase:** Phase 1 | Sprint 3
+**Status:** ✅ Active
+
+**Decision:** The Session CSV import (LENS-018) drops five address columns (address1, address2, city, region, postal) because the `client` table has no address columns. Dropped fields are reported in the dry-run preview, not silently discarded.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Report-don't-drop with deferred schema (chosen) | Honest about the gap; preview surfaces non-imported data; no schema changes outside ticket scope; works for this export (addresses are nearly all empty) | Address data from a future export with populated addresses is still not imported until the schema adds columns |
+| Pack addresses into `notes` | Preserves data without schema change | Unstructured data in a human-read/write field; same anti-pattern as sentinel-in-intent_summary (LENS-017); pollutes `notes` |
+| Add address columns to `client` | Clean schema; full import | Schema change outside ticket scope; adds columns that no other code reads or writes yet |
+| Silently drop | Simplest | Violates flag-don't-drop principle (#37 spirit); silent data loss on future imports with real addresses |
+
+**Choice:** Report-don't-drop. Address fields counted and reported in dry-run; not written.
+
+**Rationale:** The real export has addresses empty in nearly every row, so practical data loss is near-zero. The report ensures a future import with populated addresses surfaces them rather than silently discarding. Adding address columns is a schema decision that should be made when address data is actually needed by a feature, not as a side effect of an import script.
+
+**Implications:**
+- Dry-run output includes: "K of N rows contain address data that will not be imported (no schema support)."
+- No `notes` field pollution.
+- A future import with many populated addresses will show a high K value in the report, signaling the schema gap.
+
+**Revisit Trigger:** A ticket adds address columns to `client` (e.g., for location-based features, mailing, or contract generation that needs addresses).
+
+---
+
 ### LENS-D-021 — BookingAgent: reads-then-writes, retry-to-recover, three-way entry predicate
 **Date:** 2026-06-22
 **Phase:** Phase 1 | Sprint 3
@@ -73,7 +101,7 @@
 ### LENS-D-019 — source_message_id stored as interim intent_summary sentinel pending dedicated column
 **Date:** 2026-06-22
 **Phase:** Phase 1 | Sprint 3
-**Status:** ✅ Active
+**Status:** ✅ Resolved (LENS-017 added the column, backfilled, and removed the sentinel)
 
 **Decision:** LENS-015 enforces lead idempotency by `source_message_id`, but adding a real column requires a migration deferred past 015. Interim: the ID is stored as a trailing namespaced sentinel (`\n\n[lens:src_msg_id=<id>]`) appended to `intent_summary`, matched by anchored LIKE (`%[lens:src_msg_id=<id>]`). This is acknowledged interim debt. No database-level unique constraint exists yet. RLS is the sole tenant boundary — `findLeadBySourceMessage` does not filter by `photographer_id` at the app layer.
 
@@ -612,6 +640,7 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-022 | Client import defers address fields; report-don't-drop | 2026-06-22 | Schema | ✅ Active |
 | LENS-D-019 | Dedup app-enforced; unique index deferred | 2026-06-22 | Architecture | ✅ Active |
 | LENS-D-018 | Agent evals fixture-only, CI-gated | 2026-06-22 | Architecture | ✅ Active |
 | LENS-D-015 | ERP write-then-publish non-atomicity | 2026-06-19 | Architecture | ✅ Active |
