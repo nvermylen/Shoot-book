@@ -83,13 +83,13 @@ If a Claude Code question can be answered by these files, the answer is in those
 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
-Current sprint:      Sprint 3 — IN PROGRESS (LeadAgent + BookingAgent merged, LENS-017 merged, LENS-018 import in progress)
-Last ticket:         LENS-018  (Session Client CSV Import — endowed progress / rule 3)
-Next ticket:         LENS-019  (TBD — likely CommsAgent or bookings view)
+Current sprint:      Sprint 3 — IN PROGRESS (LENS-018 import + LENS-019 dashboard KPI merged; 401 clients imported to prod)
+Last ticket:         LENS-020  (Client drawer — real data + parent-contact capture — IN PROGRESS)
+Next ticket:         LENS-021  ("Who's next" / Today's shoots — sourced from Google Calendar, not CSV)
 Last migration:      migration_003_source_message_id.sql (applied to production)
-Next migration:      TBD
-Last PR branch:      LENS-018-session-client-import
-Active feature spec: (Morning sweep / dashboard spec not yet written)
+Next migration:      TBD (LENS-022 will add invoice/payment for "who owes")
+Last PR branch:      LENS-020-client-drawer-parent-contact
+Active feature spec: docs/features/Phase1/LENS-020_client-drawer-parent-contact.md
 ```
 
 ---

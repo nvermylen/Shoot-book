@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createClient, getClient, softDeleteClient } from './index';
+import { createClient, getClient, softDeleteClient, updateClientContact } from './index';
 import * as bus from '@/lib/events/bus';
 
 function createMockChain(singleResult: { data: unknown; error: unknown }) {
@@ -118,6 +118,49 @@ describe('client module', () => {
 
       expect(result.data).toBeNull();
       expect(result.error?.code).toBe('db_error');
+    });
+  });
+
+  describe('updateClientContact', () => {
+    it('updates parent contact and returns the row', async () => {
+      const updated = { ...CLIENT_ROW, parent_name: 'Susan Doe', parent_email: 'susan@example.com' };
+      const supabase = mockSupabase({ data: updated, error: null });
+
+      const result = await updateClientContact(supabase as never, 'client-1', {
+        parent_name: 'Susan Doe',
+        parent_email: 'susan@example.com',
+      });
+
+      expect(result.error).toBeNull();
+      expect(result.data?.parent_name).toBe('Susan Doe');
+    });
+
+    it('normalizes empty strings to null', async () => {
+      const chain = createMockChain({ data: CLIENT_ROW, error: null });
+      const supabase = { from: vi.fn().mockReturnValue(chain) };
+
+      await updateClientContact(supabase as never, 'client-1', { phone: '   ' });
+
+      expect(chain.update).toHaveBeenCalledWith({ phone: null });
+    });
+
+    it('rejects an invalid parent email without a db write', async () => {
+      const chain = createMockChain({ data: CLIENT_ROW, error: null });
+      const supabase = { from: vi.fn().mockReturnValue(chain) };
+
+      const result = await updateClientContact(supabase as never, 'client-1', {
+        parent_email: 'not-an-email',
+      });
+
+      expect(result.error?.code).toBe('validation_error');
+      expect(chain.update).not.toHaveBeenCalled();
+    });
+
+    it('returns validation_error when no fields are provided', async () => {
+      const supabase = mockSupabase({ data: CLIENT_ROW, error: null });
+      const result = await updateClientContact(supabase as never, 'client-1', {});
+
+      expect(result.error?.code).toBe('validation_error');
     });
   });
 
