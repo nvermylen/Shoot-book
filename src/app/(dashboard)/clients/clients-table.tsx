@@ -28,7 +28,9 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
     return (
       c.display_name.toLowerCase().includes(q) ||
       c.email.toLowerCase().includes(q) ||
-      (c.parent_name?.toLowerCase().includes(q) ?? false)
+      (c.phone?.toLowerCase().includes(q) ?? false) ||
+      (c.parent_name?.toLowerCase().includes(q) ?? false) ||
+      (c.parent_phone?.toLowerCase().includes(q) ?? false)
     );
   });
 
@@ -126,7 +128,7 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
               <div
                 key={client.id}
                 className="row-hover"
-                onClick={() => openDrawer()}
+                onClick={() => openDrawer(client)}
                 data-testid={`client-row-${client.id}`}
                 style={{
                   display: "grid",

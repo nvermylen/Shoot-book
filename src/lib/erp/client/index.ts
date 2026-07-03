@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Client, ClientSource } from '@/types/erp';
 import type { ErpResult } from '../types';
-import { toErpError, notFound } from '../types';
+import { toErpError, notFound, validationError } from '../types';
 import { publish } from '@/lib/events/bus';
 
 export async function getClient(
@@ -91,6 +91,67 @@ export async function createClient(
     };
   }
 
+  return { data, error: null };
+}
+
+export interface ClientContactPatch {
+  phone?: string | null;
+  parent_name?: string | null;
+  parent_email?: string | null;
+  parent_phone?: string | null;
+  notes?: string | null;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Update a client's contact fields (phone, parent contact, notes). RLS-scoped:
+ * the existing "Photographers can update their own clients" policy ensures a
+ * photographer can only touch their own rows. Empty strings are normalized to
+ * null so a cleared field is stored as null, not "".
+ */
+export async function updateClientContact(
+  supabase: SupabaseClient,
+  id: string,
+  patch: ClientContactPatch,
+): Promise<ErpResult<Client>> {
+  const normalize = (v: string | null | undefined): string | null | undefined => {
+    if (v === undefined) return undefined;
+    const trimmed = v?.trim() ?? '';
+    return trimmed === '' ? null : trimmed;
+  };
+
+  const update: ClientContactPatch = {
+    phone: normalize(patch.phone),
+    parent_name: normalize(patch.parent_name),
+    parent_email: normalize(patch.parent_email),
+    parent_phone: normalize(patch.parent_phone),
+    notes: normalize(patch.notes),
+  };
+
+  // Drop keys that weren't provided (undefined) so we only write intended fields.
+  for (const key of Object.keys(update) as (keyof ClientContactPatch)[]) {
+    if (update[key] === undefined) delete update[key];
+  }
+
+  if (Object.keys(update).length === 0) {
+    return { data: null, error: validationError('no fields to update') };
+  }
+
+  if (update.parent_email && !EMAIL_RE.test(update.parent_email)) {
+    return { data: null, error: validationError('parent_email is not a valid email') };
+  }
+
+  const { data, error } = await supabase
+    .from('client')
+    .update(update)
+    .eq('id', id)
+    .is('deleted_at', null)
+    .select()
+    .single();
+
+  if (error) return { data: null, error: toErpError(error) };
+  if (!data) return { data: null, error: notFound('client', id) };
   return { data, error: null };
 }
 
