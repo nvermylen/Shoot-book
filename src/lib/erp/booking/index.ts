@@ -140,6 +140,32 @@ export async function assignLocations(
   return { data: booking, error: null };
 }
 
+/** Booking row joined with the client's display name (dashboard "who's next"). */
+export type UpcomingBooking = Booking & {
+  client: { display_name: string } | null;
+};
+
+/**
+ * Upcoming sessions for the dashboard: session_date >= from, live statuses
+ * only, soonest first. RLS scopes to the photographer.
+ */
+export async function listUpcomingBookings(
+  supabase: SupabaseClient,
+  opts: { from: string; limit?: number },
+): Promise<ErpResult<UpcomingBooking[]>> {
+  const { data, error } = await supabase
+    .from('booking')
+    .select('*, client(display_name)')
+    .gte('session_date', opts.from)
+    .in('status', ['tentative', 'confirmed'])
+    .is('deleted_at', null)
+    .order('session_date', { ascending: true })
+    .limit(opts.limit ?? 50);
+
+  if (error) return { data: null, error: toErpError(error) };
+  return { data: data ?? [], error: null };
+}
+
 export interface CalendarBookingInput {
   photographer_id: string;
   client_id: string;

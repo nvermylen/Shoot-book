@@ -13,6 +13,30 @@ export interface DashboardKpis {
   sessionsBooked30d: number | null;
 }
 
+/**
+ * "Who's next" view model for the dashboard card (LENS-021d). Populated from
+ * calendar-synced bookings (LENS-021c). Intentionally carries NO payment status
+ * — "who owes" is LENS-022; the card must never fabricate a paid/balance pill.
+ */
+export interface UpcomingShoot {
+  /** booking id */
+  id: string;
+  clientName: string;
+  /** ISO date/datetime of the session. */
+  sessionDate: string;
+  /** true when the source event had no time (all-day). */
+  allDay: boolean;
+  locations: string[];
+}
+
+function formatShootWhen(sessionDate: string, allDay: boolean): { day: string; time: string | null } {
+  const d = new Date(sessionDate);
+  const day = d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  if (allDay) return { day, time: null };
+  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return { day, time };
+}
+
 function formatKpiValue(
   value: number | null,
   format?: "currency",
@@ -38,7 +62,22 @@ function kpiSubtitle(key: string, value: number | null): string {
   }
 }
 
-export default function MissionControl({ kpis }: { kpis: DashboardKpis }) {
+export default function MissionControl({
+  kpis,
+  upcomingShoots,
+  calendarConnected,
+  unmatchedCount = 0,
+  syncFailed = false,
+}: {
+  kpis: DashboardKpis;
+  /** null = syncing (not yet loaded); [] = connected but nothing upcoming. */
+  upcomingShoots: UpcomingShoot[] | null;
+  calendarConnected: boolean;
+  /** Calendar events that couldn't be matched to a client — surfaced, never dropped (Rule 4). */
+  unmatchedCount?: number;
+  /** Sync failed this load — bookings shown are last-synced, flagged as such. */
+  syncFailed?: boolean;
+}) {
   const mc = DATA.missionControl;
   const router = useRouter();
   const { openDrawer } = useDrawer();
@@ -179,33 +218,77 @@ export default function MissionControl({ kpis }: { kpis: DashboardKpis }) {
           </Section>
         </div>
 
-        {/* TODO: LENS-020 — Today's Shoots needs bookings + calendar integration */}
+        {/* Who's next — real calendar-synced shoots (LENS-021d). Rule 4: honest
+            connect / syncing / empty states, never a fabricated row. No payment
+            pill here — "who owes" is LENS-022. */}
         <Section
           eyebrow="Operations"
-          title="Today's shoots"
+          title="Who's next"
           right={<button className="btn sm" onClick={() => router.push("/shoot-day")}>Open Shoot Day →</button>}
         >
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            {DATA.todayShoots.map((s) => (
-              <div key={s.id} className="card" style={{ padding: 20, cursor: "pointer" }} onClick={() => router.push("/shoot-day")}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-                  <div>
-                    <div className="eyebrow" style={{ marginBottom: 4 }}>{s.meetAt.split(" · ")[0]}</div>
-                    <div className="display" style={{ fontSize: 22, fontWeight: 500 }}>{s.client}</div>
-                  </div>
-                  {s.paid ? (
-                    <Pill kind="success" dot>Paid in full</Pill>
-                  ) : (
-                    <Pill kind="warn" dot>Balance ${s.total - s.paidAmount} due today</Pill>
-                  )}
-                </div>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                  {s.locations.map((l) => <span key={l} className="chip"><MapPin size={11} /> {l}</span>)}
-                </div>
-                <div className="meta" style={{ fontSize: 11.5, lineHeight: 1.4 }}>{s.notes}</div>
+          {!calendarConnected ? (
+            <div className="card" data-testid="whos-next-connect" style={{ padding: 28, textAlign: "center" }}>
+              <div style={{ fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
+                Connect Google Calendar
               </div>
-            ))}
-          </div>
+              <div className="meta" style={{ marginBottom: 16 }}>
+                Pull your upcoming shoots in automatically — who&apos;s next, when, and where.
+              </div>
+              {/* Full navigation (not router.push) — the connect route 307s to Google */}
+              <a className="btn sm" href="/api/integrations/google/connect" data-testid="connect-calendar">
+                Connect Calendar →
+              </a>
+            </div>
+          ) : upcomingShoots === null ? (
+            <div className="card" data-testid="whos-next-syncing" style={{ padding: 28 }}>
+              <span className="meta">Syncing your calendar…</span>
+            </div>
+          ) : upcomingShoots.length === 0 ? (
+            <div className="card" data-testid="whos-next-empty" style={{ padding: 28 }}>
+              <span className="meta">No upcoming shoots on your calendar.</span>
+            </div>
+          ) : (
+            <div data-testid="whos-next-list" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              {upcomingShoots.map((s) => {
+                const when = formatShootWhen(s.sessionDate, s.allDay);
+                return (
+                  <div
+                    key={s.id}
+                    className="card"
+                    data-testid="whos-next-card"
+                    style={{ padding: 20, cursor: "pointer" }}
+                    onClick={() => router.push("/shoot-day")}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                      <div>
+                        <div className="eyebrow" style={{ marginBottom: 4 }}>
+                          {when.day}{when.time ? ` · ${when.time}` : ""}
+                        </div>
+                        <div className="display" style={{ fontSize: 22, fontWeight: 500 }}>{s.clientName}</div>
+                      </div>
+                      {s.allDay && <Pill kind="info">All day</Pill>}
+                    </div>
+                    {s.locations.length > 0 && (
+                      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                        {s.locations.map((l) => <span key={l} className="chip"><MapPin size={11} /> {l}</span>)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {calendarConnected && syncFailed && (
+            <div className="meta" data-testid="whos-next-sync-failed" style={{ marginTop: 10, color: "var(--warn)" }}>
+              Calendar sync failed this time — showing last synced shoots.
+            </div>
+          )}
+          {calendarConnected && !syncFailed && unmatchedCount > 0 && (
+            <div className="meta" data-testid="whos-next-unmatched" style={{ marginTop: 10 }}>
+              {unmatchedCount} calendar event{unmatchedCount === 1 ? "" : "s"}
+              {" couldn't be matched to a client yet."}
+            </div>
+          )}
         </Section>
 
         {/* TODO: LENS-020 — Fresh Inquiries needs leads/inquiries data */}

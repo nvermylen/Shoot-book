@@ -5,6 +5,7 @@ import {
   assignLocations,
   cancelBooking,
   syncBookingFromCalendarEvent,
+  listUpcomingBookings,
 } from './index';
 import * as bus from '@/lib/events/bus';
 
@@ -180,6 +181,50 @@ describe('booking module', () => {
 
       expect(result.data).toBeNull();
       expect(result.error?.code).toBe('validation_error');
+    });
+  });
+
+  describe('listUpcomingBookings', () => {
+    function mockListSupabase(result: { data: unknown; error: unknown }) {
+      const chain = {
+        select: vi.fn(),
+        gte: vi.fn(),
+        in: vi.fn(),
+        is: vi.fn(),
+        order: vi.fn(),
+        limit: vi.fn().mockResolvedValue(result),
+      };
+      chain.select.mockReturnValue(chain);
+      chain.gte.mockReturnValue(chain);
+      chain.in.mockReturnValue(chain);
+      chain.is.mockReturnValue(chain);
+      chain.order.mockReturnValue(chain);
+      return { from: vi.fn().mockReturnValue(chain), _chain: chain };
+    }
+
+    it('queries live upcoming bookings with the client join, soonest first', async () => {
+      const row = { ...BOOKING_ROW, client: { display_name: 'Emma Hartwell' } };
+      const supabase = mockListSupabase({ data: [row], error: null });
+
+      const result = await listUpcomingBookings(supabase as never, {
+        from: '2026-07-06T00:00:00Z',
+        limit: 6,
+      });
+
+      expect(result.error).toBeNull();
+      expect(result.data?.[0]?.client?.display_name).toBe('Emma Hartwell');
+      expect(supabase._chain.select).toHaveBeenCalledWith('*, client(display_name)');
+      expect(supabase._chain.gte).toHaveBeenCalledWith('session_date', '2026-07-06T00:00:00Z');
+      expect(supabase._chain.in).toHaveBeenCalledWith('status', ['tentative', 'confirmed']);
+      expect(supabase._chain.is).toHaveBeenCalledWith('deleted_at', null);
+      expect(supabase._chain.order).toHaveBeenCalledWith('session_date', { ascending: true });
+      expect(supabase._chain.limit).toHaveBeenCalledWith(6);
+    });
+
+    it('surfaces db errors', async () => {
+      const supabase = mockListSupabase({ data: null, error: { code: '42P01', message: 'boom' } });
+      const result = await listUpcomingBookings(supabase as never, { from: '2026-07-06T00:00:00Z' });
+      expect(result.error?.code).toBe('db_error');
     });
   });
 
