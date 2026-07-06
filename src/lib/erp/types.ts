@@ -4,7 +4,8 @@ export type ErpErrorCode =
   | 'not_found'
   | 'rls_denied'
   | 'db_error'
-  | 'validation_error';
+  | 'validation_error'
+  | 'integration_error';
 
 export interface ErpError {
   code: ErpErrorCode;
