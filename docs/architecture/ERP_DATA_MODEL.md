@@ -141,18 +141,27 @@ A scheduled session. The hub entity — most other entities point at it.
 - `id` (uuid PK)
 - `photographer_id` (uuid FK)
 - `client_id` (uuid FK)
-- `package_id` (uuid FK)
+- `package_id` (uuid FK, **nullable** — a calendar-imported booking may not have
+  its package assigned yet; Lens-native bookings should always set it. A null
+  package is a visible "needs attention" state, never silently defaulted.)
 - `session_date` (timestamptz — start)
 - `duration_minutes` (int)
 - `status` (text — 'tentative' | 'confirmed' | 'completed' | 'cancelled')
 - `contract_id` (uuid FK → contract, nullable until signed)
 - `deposit_invoice_id` (uuid FK → invoice, nullable until created)
 - `final_invoice_id` (uuid FK → invoice, nullable until created)
-- `external_calendar_event_id` (text — Google Calendar ID)
+- `external_calendar_event_id` (text — Google Calendar ID; **unique per
+  photographer** when set, so calendar sync is idempotent: re-syncing an event
+  updates its booking instead of duplicating it)
 - `notes` (text)
 - `created_at`, `updated_at`, `deleted_at`
 
 **RLS:** photographer-scoped.
+
+**Sync semantics (Calendar → booking, one-way for MVP):** an event whose booking
+was soft-deleted in Lens is **skipped on re-sync** — user deletion wins over the
+external source. Unmatched events (no client attendee email) are surfaced to the
+user, never silently dropped or force-created.
 
 ---
 
