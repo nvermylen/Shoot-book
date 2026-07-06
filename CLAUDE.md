@@ -83,13 +83,13 @@ If a Claude Code question can be answered by these files, the answer is in those
 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
-Current sprint:      Sprint 3 — IN PROGRESS (LENS-018 import + LENS-019 dashboard KPI merged; 401 clients imported to prod)
-Last ticket:         LENS-020  (Client drawer — real data + parent-contact capture — IN PROGRESS)
-Next ticket:         LENS-021  ("Who's next" / Today's shoots — sourced from Google Calendar, not CSV)
+Current sprint:      Sprint 3 — IN PROGRESS (LENS-018/019/020 merged; 401 clients in prod, client drawer live with parent-contact capture)
+Last ticket:         LENS-020  (Client drawer — real data + parent-contact capture — MERGED #23)
+Next ticket:         LENS-021  ("Who's next" / Today's shoots from Google Calendar — DRAFTED, not started; first live integration, decomposed into sub-PRs 021a–d)
 Last migration:      migration_003_source_message_id.sql (applied to production)
-Next migration:      TBD (LENS-022 will add invoice/payment for "who owes")
-Last PR branch:      LENS-020-client-drawer-parent-contact
-Active feature spec: docs/features/Phase1/LENS-020_client-drawer-parent-contact.md
+Next migration:      TBD (LENS-021a may add integration_credentials insert/update RLS; LENS-022 will add invoice/payment for "who owes")
+Last PR branch:      LENS-021-calendar-whos-next
+Active feature spec: docs/features/Phase1/LENS-021_calendar-whos-next.md
 ```
 
 ---

@@ -39,6 +39,9 @@ session-clients-*.csv
 # vercel
 .vercel
 
+# local tooling (preview server config, agent scratch)
+.claude/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
