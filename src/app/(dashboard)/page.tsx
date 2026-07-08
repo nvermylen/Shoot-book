@@ -1,14 +1,28 @@
 import { createClient } from "@/lib/supabase/server";
 import { countClients } from "@/lib/erp/client";
 import { listUpcomingBookings } from "@/lib/erp/booking";
+import {
+  listInvoices,
+  listUpcomingBookingsWithoutInvoice,
+  localDateString,
+  type InvoiceListRow,
+} from "@/lib/erp/invoice";
 import { isServiceConnected } from "@/lib/integrations/oauth/status";
 import { syncCalendarToBookings } from "@/lib/integrations/calendar/sync";
 import MissionControl from "./mission-control";
-import type { DashboardKpis, UpcomingShoot } from "./mission-control";
+import type { DashboardKpis, UpcomingShoot, MoneyCardData, MoneyRow } from "./mission-control";
 
 /** How far ahead the morning sweep looks. */
 const SYNC_WINDOW_DAYS = 90;
 const SHOOTS_SHOWN = 6;
+const MONEY_ROWS_SHOWN = 4;
+
+/** Whole days from `from` to `to` (YYYY-MM-DD each). Negative = past. */
+function daysUntil(from: string, to: string): number {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const [ty, tm, td] = to.split("-").map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000);
+}
 
 export default async function MissionControlPage() {
   const supabase = await createClient();
@@ -63,11 +77,64 @@ export default async function MissionControlPage() {
     }
   }
 
+  // "Who owes / what's late" (LENS-022c). Rule 4: derived overdue only, never
+  // stored; a load failure renders an explicit failed state, never a stale or
+  // fake number. money === null means the read failed.
+  let money: MoneyCardData | null = null;
+  const invoicesResult = await listInvoices(supabase);
+  if (!invoicesResult.error) {
+    const { invoices, timezone } = invoicesResult.data;
+    const today = localDateString(timezone);
+    const open = invoices.filter((i) => i.status === "sent" || i.status === "partial");
+
+    const toRow = (i: InvoiceListRow): MoneyRow => ({
+      id: i.id,
+      clientName: i.client.display_name,
+      routedToParentName:
+        i.client.parent_email !== null && i.recipient_email === i.client.parent_email
+          ? i.client.parent_name ?? i.client.parent_email
+          : null,
+      balanceCents: i.balance_cents,
+      daysOverdue: i.days_overdue,
+      dueInDays: daysUntil(today, i.due_date),
+      remindersSent: i.reminders_sent,
+    });
+
+    const late = open
+      .filter((i) => i.is_overdue)
+      .sort((a, b) => b.days_overdue - a.days_overdue)
+      .map(toRow);
+    // listInvoices orders by due_date asc, so dueNext is already soonest-first.
+    const dueNext = open.filter((i) => !i.is_overdue).map(toRow);
+
+    // Cutover assist (Rule 3): only relevant when she hasn't entered any
+    // invoices yet — count upcoming shoots with no invoice on file.
+    let uninvoicedCount = 0;
+    if (invoices.length === 0) {
+      const uninvoiced = await listUpcomingBookingsWithoutInvoice(supabase);
+      if (!uninvoiced.error) uninvoicedCount = uninvoiced.data.length;
+    }
+
+    money = {
+      hasInvoices: invoices.length > 0,
+      outstandingCents: open.reduce((sum, i) => sum + i.balance_cents, 0),
+      overdueCents: open
+        .filter((i) => i.is_overdue)
+        .reduce((sum, i) => sum + i.balance_cents, 0),
+      lateCount: late.length,
+      dueCount: dueNext.length,
+      late: late.slice(0, MONEY_ROWS_SHOWN),
+      dueNext: dueNext.slice(0, MONEY_ROWS_SHOWN),
+      uninvoicedCount,
+    };
+  }
+
   const kpis: DashboardKpis = {
     activeClients: clientCount.error ? null : clientCount.data,
     shootsThisWeek,
-    // TODO: LENS-022 — needs invoices/payments
-    outstanding: null,
+    // Cents. null = load failed OR no invoices entered yet — both render "—";
+    // "$0" is only shown when invoices exist and all are settled (a true zero).
+    outstanding: money !== null && money.hasInvoices ? money.outstandingCents : null,
     // TODO: LENS-022 — derive from booking.created_at once bookings have volume
     sessionsBooked30d: null,
   };
@@ -79,6 +146,7 @@ export default async function MissionControlPage() {
       calendarConnected={calendarConnected}
       unmatchedCount={unmatchedCount}
       syncFailed={syncFailed}
+      money={money}
     />
   );
 }
