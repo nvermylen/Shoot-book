@@ -187,7 +187,7 @@ Signed service agreement.
 - `signed_at` (timestamptz, nullable)
 - `signature_image_url` (text, nullable)
 - `signed_ip` (inet, nullable)
-- `created_at`, `updated_at`
+- `created_at`, `updated_at`, `deleted_at`
 
 **RLS:** photographer-scoped via booking.
 
