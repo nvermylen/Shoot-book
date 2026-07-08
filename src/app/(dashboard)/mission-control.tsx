@@ -9,14 +9,59 @@ import { DATA } from "@/lib/mock/data";
 export interface DashboardKpis {
   activeClients: number | null;
   shootsThisWeek: number | null;
+  /** Integer cents. null = money not loadable or no invoices entered yet ("—"). */
   outstanding: number | null;
   sessionsBooked30d: number | null;
+}
+
+/** One open invoice in the "who owes / what's late" card (LENS-022c). */
+export interface MoneyRow {
+  /** invoice id */
+  id: string;
+  clientName: string;
+  /** Parent name when the invoice routes to the parent on file; null when it goes to the client. */
+  routedToParentName: string | null;
+  balanceCents: number;
+  /** Derived at read time in the photographer's timezone (LENS-D-023). 0 unless late. */
+  daysOverdue: number;
+  /** Days until due (negative = past). */
+  dueInDays: number;
+  /** Real count from comm_log — 0 reads "no chase yet" until LENS-022e runs. */
+  remindersSent: number;
+}
+
+/**
+ * "Who owes / what's late" view model. null at the component boundary means
+ * the read failed — render the explicit failed state, never a fake zero
+ * (Rule 4). hasInvoices=false → cutover assist (Rule 3), never a blank slate.
+ */
+export interface MoneyCardData {
+  hasInvoices: boolean;
+  outstandingCents: number;
+  overdueCents: number;
+  lateCount: number;
+  dueCount: number;
+  /** Most-overdue first, capped for the card; lateCount carries the true total. */
+  late: MoneyRow[];
+  /** Soonest-due first, capped for the card; dueCount carries the true total. */
+  dueNext: MoneyRow[];
+  /** Upcoming bookings with no invoice — the cutover-assist seed when hasInvoices=false. */
+  uninvoicedCount: number;
+}
+
+function dollars(cents: number): string {
+  return (cents / 100).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+  });
 }
 
 /**
  * "Who's next" view model for the dashboard card (LENS-021d). Populated from
  * calendar-synced bookings (LENS-021c). Intentionally carries NO payment status
- * — "who owes" is LENS-022; the card must never fabricate a paid/balance pill.
+ * — "who owes" lives in its own card (LENS-022c). A paid/balance pill on a
+ * shoot row must reconcile exactly with the invoice table or not ship (Rule 4).
  */
 export interface UpcomingShoot {
   /** booking id */
@@ -42,7 +87,7 @@ function formatKpiValue(
   format?: "currency",
 ): string {
   if (value === null) return "—";
-  if (format === "currency") return `$${value.toLocaleString()}`;
+  if (format === "currency") return dollars(value);
   return String(value);
 }
 
@@ -54,7 +99,7 @@ function kpiSubtitle(key: string, value: number | null): string {
     case "shootsThisWeek":
       return "this week";
     case "outstanding":
-      return "across bookings";
+      return "open invoices";
     case "sessionsBooked30d":
       return "vs prior period";
     default:
@@ -68,6 +113,7 @@ export default function MissionControl({
   calendarConnected,
   unmatchedCount = 0,
   syncFailed = false,
+  money,
 }: {
   kpis: DashboardKpis;
   /** null = syncing (not yet loaded); [] = connected but nothing upcoming. */
@@ -77,6 +123,8 @@ export default function MissionControl({
   unmatchedCount?: number;
   /** Sync failed this load — bookings shown are last-synced, flagged as such. */
   syncFailed?: boolean;
+  /** "Who owes / what's late" (LENS-022c). null = read failed — explicit failed state, never fake zeros. */
+  money: MoneyCardData | null;
 }) {
   const mc = DATA.missionControl;
   const router = useRouter();
@@ -108,6 +156,196 @@ export default function MissionControl({
       </div>
 
       <div style={{ padding: "36px 56px 80px" }}>
+        {/* Who owes / what's late (LENS-022c). Rule 1: readable at a glance, the
+            Payments link is for acting, never for knowing. Rule 4: overdue is
+            derived, red only when true; failed reads say so; zero is only shown
+            when it's a true zero. Rule 6: a paid invoice simply leaves the list. */}
+        <Section
+          eyebrow="Billing"
+          title="Who owes / what's late"
+          right={
+            <button className="btn sm" data-testid="money-open-payments" onClick={() => router.push("/payments")}>
+              Open Payments →
+            </button>
+          }
+        >
+          {money === null ? (
+            <div className="card" data-testid="money-failed" style={{ padding: 24 }}>
+              <span className="meta" style={{ color: "var(--warn)" }}>
+                Couldn&apos;t load invoices this time — refresh to retry. Not showing
+                stale numbers.
+              </span>
+            </div>
+          ) : !money.hasInvoices ? (
+            <div className="card" data-testid="money-cutover" style={{ padding: 24 }}>
+              <div style={{ fontWeight: 500, marginBottom: 4 }}>
+                {money.uninvoicedCount > 0
+                  ? `${money.uninvoicedCount} upcoming ${money.uninvoicedCount === 1 ? "shoot has" : "shoots have"} no invoice on file`
+                  : "No invoices in Lens yet"}
+              </div>
+              <div className="meta" style={{ marginBottom: 14 }}>
+                Bring your open book in and this card answers “who owes me” every
+                morning.
+              </div>
+              <button className="btn sm" data-testid="money-cutover-cta" onClick={() => router.push("/payments")}>
+                Add invoices →
+              </button>
+            </div>
+          ) : money.lateCount === 0 && money.dueCount === 0 ? (
+            <div className="card" data-testid="money-all-settled" style={{ padding: 24 }}>
+              <span style={{ fontSize: 13, color: "var(--ink-2)" }}>
+                Nothing outstanding — every invoice is settled.
+              </span>
+            </div>
+          ) : (
+            <div className="card" data-testid="money-card" style={{ overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+                {/* What's late — the anxiety line, most overdue first */}
+                <div style={{ borderRight: "1px solid var(--rule)" }}>
+                  <div
+                    style={{
+                      padding: "10px 20px",
+                      borderBottom: "1px solid var(--rule)",
+                      background: "var(--paper-2)",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span className="eyebrow" style={{ color: money.lateCount > 0 ? "var(--danger)" : undefined }}>
+                      What&apos;s late{money.lateCount > 0 ? ` (${money.lateCount})` : ""}
+                    </span>
+                    {money.lateCount > 0 && (
+                      <span className="num" style={{ fontSize: 13, fontWeight: 600, color: "var(--danger)" }}>
+                        {dollars(money.overdueCents)}
+                      </span>
+                    )}
+                  </div>
+                  {money.late.length === 0 ? (
+                    <div className="meta" data-testid="money-none-late" style={{ padding: "14px 20px" }}>
+                      Nothing late.
+                    </div>
+                  ) : (
+                    money.late.map((r, i) => (
+                      <div
+                        key={r.id}
+                        className="row-hover"
+                        data-testid={`money-late-row-${r.id}`}
+                        onClick={() => router.push("/payments")}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: 12,
+                          padding: "11px 20px",
+                          cursor: "pointer",
+                          borderBottom: i < money.late.length - 1 ? "1px solid var(--rule)" : "none",
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 500, fontSize: 13 }}>{r.clientName}</div>
+                          <div className="meta" style={{ fontSize: 10.5, marginTop: 1 }}>
+                            {r.routedToParentName ? `→ ${r.routedToParentName} (parent)` : "→ client"}
+                            {" · "}
+                            {r.remindersSent === 0
+                              ? "no chase yet"
+                              : `${r.remindersSent} reminder${r.remindersSent === 1 ? "" : "s"} sent`}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <div className="num" style={{ fontWeight: 600, fontSize: 13, color: "var(--danger)" }}>
+                            {dollars(r.balanceCents)}
+                          </div>
+                          <div className="meta" style={{ fontSize: 10.5, color: "var(--danger)" }}>
+                            {r.daysOverdue}d late
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {money.lateCount > money.late.length && (
+                    <div className="meta" style={{ padding: "8px 20px", fontSize: 10.5 }}>
+                      +{money.lateCount - money.late.length} more late
+                    </div>
+                  )}
+                </div>
+
+                {/* Who owes next — soonest due first */}
+                <div>
+                  <div
+                    style={{
+                      padding: "10px 20px",
+                      borderBottom: "1px solid var(--rule)",
+                      background: "var(--paper-2)",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span className="eyebrow">
+                      Who owes next{money.dueCount > 0 ? ` (${money.dueCount})` : ""}
+                    </span>
+                    <span className="num" style={{ fontSize: 13, fontWeight: 600 }}>
+                      {dollars(money.outstandingCents - money.overdueCents)}
+                    </span>
+                  </div>
+                  {money.dueNext.length === 0 ? (
+                    <div className="meta" data-testid="money-none-due" style={{ padding: "14px 20px" }}>
+                      Nothing else open.
+                    </div>
+                  ) : (
+                    money.dueNext.map((r, i) => (
+                      <div
+                        key={r.id}
+                        className="row-hover"
+                        data-testid={`money-due-row-${r.id}`}
+                        onClick={() => router.push("/payments")}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: 12,
+                          padding: "11px 20px",
+                          cursor: "pointer",
+                          borderBottom: i < money.dueNext.length - 1 ? "1px solid var(--rule)" : "none",
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 500, fontSize: 13 }}>{r.clientName}</div>
+                          <div className="meta" style={{ fontSize: 10.5, marginTop: 1 }}>
+                            {r.routedToParentName ? `→ ${r.routedToParentName} (parent)` : "→ client"}
+                            {" · "}
+                            {r.remindersSent === 0
+                              ? "no chase yet"
+                              : `${r.remindersSent} reminder${r.remindersSent === 1 ? "" : "s"} sent`}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <div className="num" style={{ fontWeight: 600, fontSize: 13 }}>
+                            {dollars(r.balanceCents)}
+                          </div>
+                          <div className="meta" style={{ fontSize: 10.5 }}>
+                            {r.dueInDays === 0
+                              ? "due today"
+                              : r.dueInDays === 1
+                                ? "due tomorrow"
+                                : `due in ${r.dueInDays}d`}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {money.dueCount > money.dueNext.length && (
+                    <div className="meta" style={{ padding: "8px 20px", fontSize: 10.5 }}>
+                      +{money.dueCount - money.dueNext.length} more open
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </Section>
+
         {/* TODO: LENS-020 — Action Required needs bookings + payments data */}
         <Section
           eyebrow="Mission control"
@@ -220,7 +458,8 @@ export default function MissionControl({
 
         {/* Who's next — real calendar-synced shoots (LENS-021d). Rule 4: honest
             connect / syncing / empty states, never a fabricated row. No payment
-            pill here — "who owes" is LENS-022. */}
+            pill here — money lives in the "Who owes / what's late" card above;
+            a pill on a shoot row ships only if its join reconciles exactly. */}
         <Section
           eyebrow="Operations"
           title="Who's next"
