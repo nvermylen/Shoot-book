@@ -1,4 +1,4 @@
-import type { LeadQualificationStatus, BookingStatus } from './erp';
+import type { LeadQualificationStatus, BookingStatus, InvoiceKind } from './erp';
 
 // ---------------------------------------------------------------------------
 // Base event shape — all domain events carry these fields
@@ -88,6 +88,28 @@ export interface LocationUpdatedEvent extends BaseEvent {
   location_id: string;
 }
 
+export interface InvoiceCreatedEvent extends BaseEvent {
+  type: 'invoice.created';
+  invoice_id: string;
+  booking_id: string;
+  kind: InvoiceKind;
+  amount_cents: number;
+}
+
+export interface InvoiceCancelledEvent extends BaseEvent {
+  type: 'invoice.cancelled';
+  invoice_id: string;
+}
+
+// No body content in the payload — comm_log is the ledger for content
+// (ZDR posture, ANTI_PATTERNS #28 spirit).
+export interface InvoiceReminderSentEvent extends BaseEvent {
+  type: 'invoice.reminder_sent';
+  invoice_id: string;
+  step: number;
+  recipient: string;
+}
+
 export interface PaymentReceivedEvent extends BaseEvent {
   type: 'payment.received';
   invoice_id: string;
@@ -116,6 +138,9 @@ export type DomainEvent =
   | PackageUpdatedEvent
   | LocationCreatedEvent
   | LocationUpdatedEvent
+  | InvoiceCreatedEvent
+  | InvoiceCancelledEvent
+  | InvoiceReminderSentEvent
   | PaymentReceivedEvent
   | GmailMessageReceivedEvent;
 
