@@ -40,6 +40,59 @@
 
 ---
 
+### LENS-D-024 — Payment-chase state derived from comm_log; no state table
+**Date:** 2026-07-07
+**Phase:** Phase 1 | Sprint 3
+**Status:** ✅ Active
+
+**Decision:** The invoice payment chase (LENS-022) derives "what have I already sent for this invoice" from `comm_log` rows tagged with the new nullable `comm_log.invoice_id` column (migration_005). There is no `invoice_chase_state` table.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Derive from comm_log (chosen) | Consistent with event-trail-as-versioning (LENS-D-015 lineage); the append-only ledger IS the history; crash-safe — no state row to drift from reality; reminder counts on the payments page are a simple count | Chase queries join/aggregate over comm_log; per-day idempotency guard is a query, not a flag |
+| Dedicated `invoice_chase_state` table | O(1) reads of current step | Second source of truth that can disagree with the ledger; a stale state row makes the chase skip or double-send — exactly the accuracy failure HABIT_DESIGN Rule 4 forbids |
+| Reuse `comm_sequence_state.current_step` for chase progression | No new column | Same drift risk; conflates pause/cancel *intent* with send *history* |
+
+**Choice:** Derive from `comm_log`. `comm_sequence_state` tracks only pause/cancel intent for a chase; step progression and idempotency ("no row for this invoice_id today, local time") come from the ledger.
+
+**Rationale:** The log cannot lie about what was sent because it is written by the send path itself and is append-only (no UPDATE policy). Any separate state table would need a job to keep it honest.
+
+**Implications:**
+- migration_005 adds `comm_log.invoice_id uuid references invoice(id)` + partial index.
+- Reminder counts and chase step selection are computed reads over comm_log.
+- Pausing a chase is a `comm_sequence_state.status='paused'` write; it never rewrites history.
+
+**Revisit Trigger:** comm_log aggregation becomes a measured hot path at real volume (then add a materialized read model, still derived from the ledger — never a hand-maintained state table).
+
+---
+
+### LENS-D-023 — Invoice 'overdue' is derived at read time, never stored
+**Date:** 2026-07-07
+**Phase:** Phase 1 | Sprint 3
+**Status:** ✅ Active
+
+**Decision:** The `invoice.status` enum (migration_005) is `'draft' | 'sent' | 'partial' | 'paid' | 'cancelled'` — deliberately dropping the `'overdue'` value that ERP_DATA_MODEL originally listed. Overdue = `status IN ('sent','partial') AND due_date < today`, computed at read time in the photographer's timezone, exposed by the ERP module as derived fields (`is_overdue`, `days_overdue`).
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Derived at read time (chosen) | Cannot be stale — never cached, never waiting on a job; no scheduler infrastructure needed for correctness | Every read computes it; consumers must use the ERP read (not raw status) to know overdueness |
+| Stored status flipped by a scheduled job | Status is directly queryable/indexable | A lagging or dead job shows an overdue invoice as merely "sent" in the morning sweep — a confident lie about money, the exact HABIT_DESIGN Rule 4 failure; job infrastructure becomes a correctness dependency |
+
+**Choice:** Derived, never stored. ERP_DATA_MODEL.md updated to match (the intent layer now records the derived rule).
+
+**Rationale:** Dashboard accuracy is a P0 release gate. For "what's late," staleness is not a performance issue but a trust-ending bug; the only status that cannot be stale is one that is never persisted.
+
+**Implications:**
+- The partial index `invoice_open_sweep_idx (photographer_id, due_date) WHERE status IN ('sent','partial')` keeps the derived-overdue sweep query fast without a stored flag.
+- Timezone matters: "past due" rolls over at the photographer's local midnight (`photographer.timezone`), not UTC — test coverage required at the boundary.
+- Phase-2 Stripe reconciliation never needs to un-flip an 'overdue' status; payment recompute only moves between sent/partial/paid.
+
+**Revisit Trigger:** A reporting need requires querying historical "was overdue on date X" — answer from `domain_event_log` reminder/payment events before reaching for a stored flag.
+
+---
+
 ### LENS-D-022 — Client import defers address fields; report-don't-drop
 **Date:** 2026-06-22
 **Phase:** Phase 1 | Sprint 3
@@ -668,6 +721,8 @@ Copy the relevant template when adding a new entry:
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
 | LENS-D-025 | One combined Google consent; dual-row token upsert; granted scopes verified | 2026-07-07 | Security | ✅ Active |
+| LENS-D-024 | Payment-chase state derived from comm_log; no state table | 2026-07-07 | Schema | ✅ Active |
+| LENS-D-023 | Invoice 'overdue' derived at read time, never stored | 2026-07-07 | Schema | ✅ Active |
 | LENS-D-022 | Client import defers address fields; report-don't-drop | 2026-06-22 | Schema | ✅ Active |
 | LENS-D-019 | Dedup app-enforced; unique index deferred | 2026-06-22 | Architecture | ✅ Active |
 | LENS-D-018 | Agent evals fixture-only, CI-gated | 2026-06-22 | Architecture | ✅ Active |
