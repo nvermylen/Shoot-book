@@ -8,6 +8,7 @@ import {
   GoogleOAuthExchangeError,
   CALENDAR_READONLY_SCOPE,
   GMAIL_SEND_SCOPE,
+  GMAIL_READONLY_SCOPE,
 } from './oauth';
 
 const CLIENT_ID = 'test-client-id.apps.googleusercontent.com';
@@ -43,9 +44,10 @@ describe('google oauth helper', () => {
       expect(url.searchParams.get('client_id')).toBe(CLIENT_ID);
       expect(url.searchParams.get('redirect_uri')).toBe(REDIRECT);
       expect(url.searchParams.get('response_type')).toBe('code');
-      // One combined consent — calendar read + gmail.send (LENS-D-025 / D6).
+      // One combined consent — calendar read + gmail.send + gmail.readonly
+      // (LENS-D-025; readonly added by LENS-023a per the revisit trigger).
       expect(url.searchParams.get('scope')).toBe(
-        `${CALENDAR_READONLY_SCOPE} ${GMAIL_SEND_SCOPE}`,
+        `${CALENDAR_READONLY_SCOPE} ${GMAIL_SEND_SCOPE} ${GMAIL_READONLY_SCOPE}`,
       );
       expect(url.searchParams.get('access_type')).toBe('offline');
       expect(url.searchParams.get('prompt')).toBe('consent');
@@ -119,32 +121,54 @@ describe('google oauth helper', () => {
   });
 
   describe('resolveGrantedServices', () => {
-    it('recognizes both services when both scopes were granted', () => {
+    it('recognizes all capabilities when the full union was granted', () => {
       expect(
-        resolveGrantedServices([CALENDAR_READONLY_SCOPE, GMAIL_SEND_SCOPE]),
-      ).toEqual({ calendar: true, gmail: true });
+        resolveGrantedServices([
+          CALENDAR_READONLY_SCOPE,
+          GMAIL_SEND_SCOPE,
+          GMAIL_READONLY_SCOPE,
+        ]),
+      ).toEqual({ calendar: true, gmail: true, gmailRead: true });
     });
 
-    it('handles a partial grant — user unchecked gmail on the consent screen', () => {
+    it('handles partial grants — each capability tracked independently', () => {
       expect(resolveGrantedServices([CALENDAR_READONLY_SCOPE])).toEqual({
         calendar: true,
         gmail: false,
+        gmailRead: false,
       });
+      // Send without readonly: chase alive, intake off.
       expect(resolveGrantedServices([GMAIL_SEND_SCOPE])).toEqual({
         calendar: false,
         gmail: true,
+        gmailRead: false,
+      });
+      // Readonly without send: no gmail row is created (callback keys on
+      // gmail/send) — intake reports not-connected rather than half-working.
+      expect(resolveGrantedServices([GMAIL_READONLY_SCOPE])).toEqual({
+        calendar: false,
+        gmail: false,
+        gmailRead: true,
       });
     });
 
     it('treats a missing scope field as nothing verified — never assume from the request', () => {
-      expect(resolveGrantedServices(null)).toEqual({ calendar: false, gmail: false });
-      expect(resolveGrantedServices([])).toEqual({ calendar: false, gmail: false });
+      expect(resolveGrantedServices(null)).toEqual({
+        calendar: false,
+        gmail: false,
+        gmailRead: false,
+      });
+      expect(resolveGrantedServices([])).toEqual({
+        calendar: false,
+        gmail: false,
+        gmailRead: false,
+      });
     });
 
     it('ignores unrelated scopes (openid, email, …)', () => {
       expect(
         resolveGrantedServices(['openid', 'https://www.googleapis.com/auth/userinfo.email']),
-      ).toEqual({ calendar: false, gmail: false });
+      ).toEqual({ calendar: false, gmail: false, gmailRead: false });
     });
   });
 

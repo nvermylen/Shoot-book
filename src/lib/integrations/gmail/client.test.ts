@@ -160,3 +160,177 @@ describe('sendEmail', () => {
     expect(failed.error?.detail).not.toContain('Susan');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Read slice (LENS-023a)
+// ---------------------------------------------------------------------------
+
+import { listInboxMessageIds, getMessage } from './client';
+
+function b64url(s: string): string {
+  return Buffer.from(s, 'utf8').toString('base64url');
+}
+
+describe('listInboxMessageIds', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('queries a rolling inbox window and returns refs', async () => {
+    stubToken();
+    const fetchMock = mockFetch({
+      status: 200,
+      body: { messages: [{ id: 'm1', threadId: 'm1' }, { id: 'm2', threadId: 't-other' }] },
+    });
+
+    const res = await listInboxMessageIds(SUPABASE, 'photo-1');
+    expect(res.error).toBeNull();
+    expect(res.data).toEqual([
+      { id: 'm1', threadId: 'm1' },
+      { id: 'm2', threadId: 't-other' },
+    ]);
+
+    const url = new URL(fetchMock.mock.calls[0][0] as string);
+    expect(url.pathname).toBe('/gmail/v1/users/me/messages');
+    expect(url.searchParams.get('q')).toBe('in:inbox newer_than:2d');
+    expect(url.searchParams.get('maxResults')).toBe('50');
+  });
+
+  it('returns an empty list when the window has no messages (Gmail omits the field)', async () => {
+    stubToken();
+    mockFetch({ status: 200, body: {} });
+
+    const res = await listInboxMessageIds(SUPABASE, 'photo-1');
+    expect(res.error).toBeNull();
+    expect(res.data).toEqual([]);
+  });
+
+  it('maps 401 to integration_auth_error', async () => {
+    stubToken();
+    mockFetch({ status: 401 });
+
+    const res = await listInboxMessageIds(SUPABASE, 'photo-1');
+    expect(res.error?.code).toBe('integration_auth_error');
+  });
+});
+
+describe('getMessage', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function messageBody(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'm1',
+      threadId: 'm1',
+      internalDate: '1783300000000',
+      payload: {
+        mimeType: 'multipart/alternative',
+        headers: [
+          { name: 'From', value: 'Susan Hartwell <Susan@Example.com>' },
+          { name: 'Subject', value: 'Senior photos for Emma?' },
+        ],
+        parts: [
+          {
+            mimeType: 'text/plain',
+            body: { data: b64url('Hi! Do you have August availability?') },
+          },
+          { mimeType: 'text/html', body: { data: b64url('<p>Hi!</p>') } },
+        ],
+      },
+      ...overrides,
+    };
+  }
+
+  it('parses headers and prefers the text/plain part', async () => {
+    stubToken();
+    mockFetch({ status: 200, body: messageBody() });
+
+    const res = await getMessage(SUPABASE, 'photo-1', 'm1');
+    expect(res.error).toBeNull();
+    expect(res.data).toEqual({
+      messageId: 'm1',
+      threadId: 'm1',
+      isThreadStart: true,
+      fromName: 'Susan Hartwell',
+      fromEmail: 'susan@example.com',
+      subject: 'Senior photos for Emma?',
+      bodyText: 'Hi! Do you have August availability?',
+      receivedAt: new Date(1783300000000).toISOString(),
+    });
+  });
+
+  it('detects replies: message id !== thread id → not a thread start', async () => {
+    stubToken();
+    mockFetch({ status: 200, body: messageBody({ id: 'm9', threadId: 'm1' }) });
+
+    const res = await getMessage(SUPABASE, 'photo-1', 'm9');
+    expect(res.data?.isThreadStart).toBe(false);
+  });
+
+  it('decodes RFC 2047 subjects and From names (B and Q encodings)', async () => {
+    stubToken();
+    const body = messageBody();
+    (body.payload.headers as { name: string; value: string }[])[0].value =
+      `=?UTF-8?B?${Buffer.from('Zoë Q.', 'utf8').toString('base64')}?= <zoe@example.com>`;
+    (body.payload.headers as { name: string; value: string }[])[1].value =
+      '=?UTF-8?Q?Se=C3=B1ior_photos?=';
+    mockFetch({ status: 200, body });
+
+    const res = await getMessage(SUPABASE, 'photo-1', 'm1');
+    expect(res.data?.fromName).toBe('Zoë Q.');
+    expect(res.data?.subject).toBe('Señior photos');
+  });
+
+  it('accepts a bare-address From header', async () => {
+    stubToken();
+    const body = messageBody();
+    (body.payload.headers as { name: string; value: string }[])[0].value = 'emma@example.com';
+    mockFetch({ status: 200, body });
+
+    const res = await getMessage(SUPABASE, 'photo-1', 'm1');
+    expect(res.data?.fromName).toBeNull();
+    expect(res.data?.fromEmail).toBe('emma@example.com');
+  });
+
+  it('falls back to stripped HTML when no text/plain part exists, walking nested parts', async () => {
+    stubToken();
+    const body = messageBody();
+    body.payload.parts = [
+      {
+        mimeType: 'multipart/related',
+        parts: [
+          {
+            mimeType: 'text/html',
+            body: { data: b64url('<div>Hello &amp; hi<br><b>availability?</b></div>') },
+          },
+        ],
+      },
+    ] as never;
+    mockFetch({ status: 200, body });
+
+    const res = await getMessage(SUPABASE, 'photo-1', 'm1');
+    expect(res.data?.bodyText).toBe('Hello & hi availability?');
+  });
+
+  it('rejects a message with no parseable From — cannot be attributed, cannot be a lead', async () => {
+    stubToken();
+    const body = messageBody();
+    (body.payload.headers as { name: string; value: string }[])[0].value = 'undisclosed-recipients:;';
+    mockFetch({ status: 200, body });
+
+    const res = await getMessage(SUPABASE, 'photo-1', 'm1');
+    expect(res.error?.code).toBe('validation_error');
+  });
+
+  it('maps a revoked refresh grant to integration_auth_error (shared token path)', async () => {
+    vi.spyOn(auth, 'getValidAccessToken').mockRejectedValue(
+      new GoogleOAuthExchangeError('invalid_grant'),
+    );
+
+    const res = await getMessage(SUPABASE, 'photo-1', 'm1');
+    expect(res.error?.code).toBe('integration_auth_error');
+  });
+});
