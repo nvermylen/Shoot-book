@@ -3,14 +3,19 @@ import {
   listInvoices,
   listUpcomingBookingsWithoutInvoice,
 } from "@/lib/erp/invoice";
+import { listChaseStates } from "@/lib/erp/invoice/chase";
+import { isServiceConnected } from "@/lib/integrations/oauth/status";
 import { PaymentsTable } from "./payments-table";
 
 export default async function PaymentsPage() {
   const supabase = await createClient();
-  const [invoicesResult, uninvoicedResult] = await Promise.all([
-    listInvoices(supabase),
-    listUpcomingBookingsWithoutInvoice(supabase),
-  ]);
+  const [invoicesResult, uninvoicedResult, chaseResult, gmailResult] =
+    await Promise.all([
+      listInvoices(supabase),
+      listUpcomingBookingsWithoutInvoice(supabase),
+      listChaseStates(supabase),
+      isServiceConnected(supabase, "gmail"),
+    ]);
 
   if (invoicesResult.error || uninvoicedResult.error) {
     return (
@@ -45,6 +50,8 @@ export default async function PaymentsPage() {
       invoices={invoicesResult.data.invoices}
       timezone={invoicesResult.data.timezone}
       uninvoiced={uninvoicedResult.data}
+      chaseStates={chaseResult.error ? {} : chaseResult.data}
+      gmailConnected={gmailResult.error ? false : gmailResult.data}
     />
   );
 }

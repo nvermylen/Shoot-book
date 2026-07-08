@@ -7,6 +7,7 @@ import {
   localDateString,
   type InvoiceListRow,
 } from "@/lib/erp/invoice";
+import { listChaseStates, type InvoiceChaseState } from "@/lib/erp/invoice/chase";
 import { isServiceConnected } from "@/lib/integrations/oauth/status";
 import { syncCalendarToBookings } from "@/lib/integrations/calendar/sync";
 import MissionControl from "./mission-control";
@@ -87,6 +88,16 @@ export default async function MissionControlPage() {
     const today = localDateString(timezone);
     const open = invoices.filter((i) => i.status === "sent" || i.status === "partial");
 
+    // Chase state (LENS-022e) — derived from comm_log; escalations are the
+    // one operator-facing chase signal (Rule 5). Failure degrades to "no
+    // chase info", never blocks the money read.
+    const chaseResult = await listChaseStates(supabase);
+    const chase: Record<string, InvoiceChaseState> = chaseResult.error
+      ? {}
+      : chaseResult.data;
+    const gmailStatus = await isServiceConnected(supabase, "gmail");
+    const gmailConnected = gmailStatus.error ? false : gmailStatus.data;
+
     const toRow = (i: InvoiceListRow): MoneyRow => ({
       id: i.id,
       clientName: i.client.display_name,
@@ -98,6 +109,8 @@ export default async function MissionControlPage() {
       daysOverdue: i.days_overdue,
       dueInDays: daysUntil(today, i.due_date),
       remindersSent: i.reminders_sent,
+      chaseEscalated: chase[i.id]?.escalated ?? false,
+      chasePaused: chase[i.id]?.paused ?? false,
     });
 
     const late = open
@@ -126,6 +139,9 @@ export default async function MissionControlPage() {
       late: late.slice(0, MONEY_ROWS_SHOWN),
       dueNext: dueNext.slice(0, MONEY_ROWS_SHOWN),
       uninvoicedCount,
+      // The chase's second (and only other) operator signal: a paused chase
+      // presented as running is the incumbent's exact failure (Rule 5).
+      chaseSendingBroken: open.length > 0 && !gmailConnected,
     };
   }
 

@@ -13,6 +13,59 @@
 
 ---
 
+### LENS-D-027 — Per-invoice chase pause keyed by comm_sequence_state.invoice_id
+**Date:** 2026-07-07
+**Phase:** Phase 1 | Sprint 3 (LENS-022e)
+**Status:** ✅ Active
+
+**Decision:** The payment chase's pause toggle is per invoice, stored as `comm_sequence_state.status='paused'` on a row keyed by a new nullable `invoice_id` column (migration_006, partial unique index). The table stores pause/cancel INTENT only — never chase history (LENS-D-024).
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Add `invoice_id` to comm_sequence_state (chosen) | Honors the spec's per-invoice pause; mirrors `comm_log.invoice_id` from migration_005; one small nullable column | Requires a migration |
+| Key pause on existing (sequence, client, booking) columns | No migration | A booking carries deposit + final invoices — pausing one chase would silently pause the other; wrong granularity |
+| `chase_paused_at` column on invoice | Conceptually simple | Spec (D2) deliberately routes sequence intent through comm_sequence_state; scattering chase fields across invoice muddies the ledger-derives-history model |
+
+**Choice:** New column. Rows are created lazily on first pause; resume flips status to 'active'.
+
+**Rationale:** Morgan pausing the final-payment chase mid-conversation with a parent must not also mute the deposit chase on the same booking. Wrong-granularity pause is a silent-chase failure — the exact incumbent behavior this feature exists to kill.
+
+**Implications:**
+- migration_006 must be applied (prod + test) before the 022e code merges; without the column, chase-state reads degrade honestly (no pause info) but the pause toggle errors.
+- RLS unchanged — existing policies scope through the owning comm_sequence.
+- ERP_DATA_MODEL comm_sequence_state entry updated.
+
+**Revisit Trigger:** A settings UI for sequences needs richer per-target state (e.g., per-invoice snooze-until) — revisit the shape then, still intent-only.
+
+---
+
+### LENS-D-026 — Chase reminders are send-then-log (spec D5)
+**Date:** 2026-07-07
+**Phase:** Phase 1 | Sprint 3 (LENS-022e)
+**Status:** ✅ Active
+
+**Decision:** The chase engine calls `gmail.send` FIRST and writes the `comm_log` row only after a successful send. There is no write-ahead "pending" row and no post-hoc status flip.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Send-then-log (chosen) | The append-only ledger never claims a send that didn't happen; chase state derived from comm_log (LENS-D-024) stays truthful; no UPDATE needed on an append-only table | Crash between send and log → one duplicate reminder the next local day (bounded) |
+| Write-ahead log, mark failed after | Matches the Gmail registry's general write-ahead pattern | comm_log has no UPDATE policy (append-only); a row claiming a send that failed makes the engine silently skip a day — an accuracy lie aimed at money |
+
+**Choice:** Send-then-log. When the log write fails after a successful send, the runner reports it loudly (`SENT but comm_log write failed`) — never a silent stop.
+
+**Rationale:** For the chase, a false "sent" is worse than a rare duplicate: it silently stops the chase (the incumbent's exact failure mode), and the derived state (LENS-D-024) would compound the lie into skipped escalations.
+
+**Implications:**
+- Accepted failure mode: at most one duplicate reminder per crash, self-healing next day.
+- The Gmail adapter stays log-free (#11); `comm_log` is the only ledger for content.
+- Code and decision agree: `runInvoiceChase` in `src/lib/erp/invoice/chase.ts`.
+
+**Revisit Trigger:** A durable job queue (LENS-D-011 revisit) lands — exactly-once delivery semantics could then replace the bounded-dup tradeoff.
+
+---
+
 ### LENS-D-025 — One combined Google consent; tokens upserted onto both service rows; granted scopes verified, never assumed
 **Date:** 2026-07-07
 **Phase:** Phase 1 | Sprint 3 (LENS-022d)
@@ -720,6 +773,8 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-027 | Per-invoice chase pause keyed by comm_sequence_state.invoice_id | 2026-07-07 | Schema | ✅ Active |
+| LENS-D-026 | Chase reminders are send-then-log | 2026-07-07 | Architecture | ✅ Active |
 | LENS-D-025 | One combined Google consent; dual-row token upsert; granted scopes verified | 2026-07-07 | Security | ✅ Active |
 | LENS-D-024 | Payment-chase state derived from comm_log; no state table | 2026-07-07 | Schema | ✅ Active |
 | LENS-D-023 | Invoice 'overdue' derived at read time, never stored | 2026-07-07 | Schema | ✅ Active |

@@ -7,11 +7,13 @@ import type {
   InvoiceListRow,
   UninvoicedBooking,
 } from "@/lib/erp/invoice";
+import type { InvoiceChaseState } from "@/lib/erp/invoice/chase";
 import {
   createInvoiceAction,
   recordPaymentAction,
   deletePaymentAction,
   cancelInvoiceAction,
+  setChasePausedAction,
 } from "./actions";
 
 // ---------------------------------------------------------------------------
@@ -67,10 +69,15 @@ export function PaymentsTable({
   invoices,
   timezone,
   uninvoiced,
+  chaseStates,
+  gmailConnected,
 }: {
   invoices: InvoiceListRow[];
   timezone: string;
   uninvoiced: UninvoicedBooking[];
+  /** Per-open-invoice chase state derived from comm_log (LENS-D-024). */
+  chaseStates: Record<string, InvoiceChaseState>;
+  gmailConnected: boolean;
 }) {
   const [tab, setTab] = useState<"outstanding" | "paid" | "all">("outstanding");
   const [newInvoiceFor, setNewInvoiceFor] = useState<UninvoicedBooking | null | "pick">(null);
@@ -189,7 +196,7 @@ export function PaymentsTable({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 150px 110px 110px 90px 130px 170px",
+                  gridTemplateColumns: "1fr 130px 95px 95px 110px 120px 250px",
                   padding: "10px 20px",
                   borderBottom: "1px solid var(--rule)",
                   background: "var(--paper-2)",
@@ -220,7 +227,7 @@ export function PaymentsTable({
                   data-testid={`invoice-row-${r.id}`}
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 150px 110px 110px 90px 130px 170px",
+                    gridTemplateColumns: "1fr 130px 95px 95px 110px 120px 250px",
                     padding: "14px 20px",
                     alignItems: "center",
                     borderBottom: i < rows.length - 1 ? "1px solid var(--rule)" : "none",
@@ -244,7 +251,23 @@ export function PaymentsTable({
                     {dollars(r.status === "paid" || r.status === "cancelled" ? r.amount_cents : r.balance_cents)}
                   </span>
                   <span className="meta">{shortDate(r.due_date, timezone)}</span>
-                  <span className="meta num">{r.reminders_sent}</span>
+                  <div>
+                    <span className="meta num">{r.reminders_sent}</span>
+                    {chaseStates[r.id]?.escalated && (
+                      <div
+                        className="meta"
+                        data-testid={`chase-escalated-${r.id}`}
+                        style={{ fontSize: 10, color: "var(--warn)", fontWeight: 600 }}
+                      >
+                        your turn — chase stopped
+                      </div>
+                    )}
+                    {chaseStates[r.id]?.paused && !chaseStates[r.id]?.escalated && (
+                      <div className="meta" data-testid={`chase-paused-${r.id}`} style={{ fontSize: 10 }}>
+                        chase paused
+                      </div>
+                    )}
+                  </div>
                   <div>{statusPill(r)}</div>
                   <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                     {(r.status === "sent" || r.status === "partial") && (
@@ -256,6 +279,10 @@ export function PaymentsTable({
                         >
                           Record payment
                         </button>
+                        <ChaseToggleButton
+                          invoice={r}
+                          paused={chaseStates[r.id]?.paused ?? false}
+                        />
                         <CancelInvoiceButton invoice={r} />
                       </>
                     )}
@@ -284,12 +311,34 @@ export function PaymentsTable({
                 </div>
               </div>
 
+              {!gmailConnected && (
+                <div
+                  className="card"
+                  data-testid="chase-reconnect-warning"
+                  style={{ padding: 20, marginBottom: 16, borderColor: "var(--warn)" }}
+                >
+                  <div className="eyebrow" style={{ marginBottom: 8, color: "var(--warn)" }}>
+                    Chase paused
+                  </div>
+                  <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5, marginBottom: 12 }}>
+                    Google isn’t connected for sending, so no payment reminders are
+                    going out.
+                  </div>
+                  {/* Full navigation — the connect route 307s to Google */}
+                  <a className="btn sm" href="/api/integrations/google/connect" data-testid="chase-reconnect-btn">
+                    Reconnect Google →
+                  </a>
+                </div>
+              )}
+
               <div className="card" style={{ padding: 20 }}>
                 <div className="eyebrow" style={{ marginBottom: 8 }}>Payment chase</div>
                 <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-                  Automated reminders are not running yet — they arrive with the
-                  payment chase (LENS-022e). Reminder counts shown are real sends
-                  logged so far.
+                  Reminders send automatically from your Gmail between 8–10am your
+                  time: a heads-up 7 days out, a direct note 3 days out, one on the
+                  due date, then daily once overdue — and they stop the moment a
+                  payment is recorded. After 5 overdue notes the chase hands the
+                  account to you. Reminder counts shown are real sends from the log.
                 </div>
               </div>
             </div>
@@ -739,6 +788,38 @@ function RecordPaymentDialog({
         </button>
       )}
     </DialogShell>
+  );
+}
+
+function ChaseToggleButton({
+  invoice,
+  paused,
+}: {
+  invoice: InvoiceListRow;
+  paused: boolean;
+}) {
+  const [pending, startTransition] = useTransition();
+
+  const toggle = () => {
+    startTransition(async () => {
+      await setChasePausedAction(invoice.id, !paused);
+    });
+  };
+
+  return (
+    <button
+      className="btn sm ghost"
+      data-testid={`chase-toggle-btn-${invoice.id}`}
+      disabled={pending}
+      onClick={toggle}
+      title={
+        paused
+          ? "Resume automatic payment reminders for this invoice"
+          : "Pause automatic payment reminders for this invoice"
+      }
+    >
+      {paused ? "Resume chase" : "Pause chase"}
+    </button>
   );
 }
 

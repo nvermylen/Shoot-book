@@ -51,6 +51,8 @@ export async function appendCommLog(
     body?: string;
     external_message_id?: string;
     sequence_id?: string;
+    /** Set on payment reminders — chase state derives from these rows (LENS-D-024). */
+    invoice_id?: string;
     sent_at: string;
   },
 ): Promise<ErpResult<CommLog>> {
