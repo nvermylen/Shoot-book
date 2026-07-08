@@ -225,25 +225,7 @@ export const DATA = {
     ],
   },
 
-  payments: {
-    stats: { outstanding: 3280, overdue: 850, paidMTD: 6720, paidLastMonth: 5890 },
-    rows: [
-      { id: "p-301", client: "Emma Hartwell", parent: "Susan Hartwell", session: "Senior · Oct 28", amount: 425, due: "Oct 19", reminders: 2, routing: "parent", status: "overdue" as const, overdueDays: 2 },
-      { id: "p-298", client: "Mia Delgado", parent: "Rosa Delgado", session: "Senior · Oct 22", amount: 350, due: "Oct 22", reminders: 2, routing: "parent", status: "due_soon" as const, overdueDays: undefined },
-      { id: "p-320", client: "Jordan Pak", parent: null, session: "Senior · Oct 30", amount: 425, due: "Oct 30", reminders: 1, routing: "client", status: "due_soon" as const, overdueDays: undefined },
-      { id: "p-330", client: "Iris Goodson", parent: "Dana Goodson", session: "Senior · Nov 08", amount: 425, due: "Nov 08", reminders: 0, routing: "parent", status: "scheduled" as const, overdueDays: undefined },
-      { id: "p-311", client: "The Okafor Family", parent: null, session: "Family · Nov 03", amount: 850, due: "Nov 03", reminders: 1, routing: "client", status: "overdue" as const, overdueDays: 1 },
-      { id: "p-325", client: "Nora Whitaker", parent: "Dana Whitaker", session: "Senior · Nov 14", amount: 425, due: "Nov 14", reminders: 0, routing: "parent", status: "scheduled" as const, overdueDays: undefined },
-      { id: "p-326", client: "Maya Hollis", parent: null, session: "Senior · Nov 16", amount: 425, due: "Nov 16", reminders: 0, routing: "client", status: "scheduled" as const, overdueDays: undefined },
-      { id: "p-323", client: "Ava Montoya", parent: null, session: "Senior · Nov 10", amount: 425, due: "Nov 10", reminders: 0, routing: "client", status: "scheduled" as const, overdueDays: undefined },
-    ],
-    rules: [
-      { id: "r1", label: "Reminder #1", when: "7 days before due", enabled: true, sends: 6 },
-      { id: "r2", label: "Reminder #2", when: "3 days before due", enabled: true, sends: 4 },
-      { id: "r3", label: "Final notice", when: "Day of due", enabled: true, sends: 2 },
-      { id: "r4", label: "Overdue escalation", when: "2 days after due", enabled: true, sends: 1 },
-    ],
-  },
+  // payments: replaced by real data (LENS-022b) — see src/lib/erp/invoice/.
 
   finances: {
     annualGoal: 84000,
