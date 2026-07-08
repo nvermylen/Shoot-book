@@ -84,12 +84,12 @@ If a Claude Code question can be answered by these files, the answer is in those
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
 Current sprint:      Sprint 3 — IN PROGRESS (LENS-018/019/020 merged; LENS-021 COMPLETE — a/b/c/d merged #26/#27/#28/#31; "who's next" pillar live)
-Last ticket:         LENS-022c (dashboard "who owes / what's late" card + Outstanding KPI — MERGED #37; 022d #35, 022b #36, 022a #33)
-Next ticket:         LENS-022e (chase — all deps merged: 022b invoices + 022d gmail.send; branch from main). Before Morgan sees the sweep: seed prod test account with a realistic invoice book + hand-reconcile dashboard vs payments page (accuracy release gate). PENDING OWNER ACCEPTANCE (022d): reconnect Google on prod test account — both consent boxes, calendar sync unchanged, calendar+gmail rows in integration_credentials. NOTE: recompute-guards follow-up (022b) may be unpushed in a local session — rebase before pushing main.
+Last ticket:         LENS-022 a–d ALL MERGED (#33/#36/#35/#37) + recompute guards #38 (cancelled-invoice resurrection fix — 022e session MUST rebase onto this). LENS-023 spec merged #40. Cleanups: #30 (contract.deleted_at doc), #39 (vitest excludes .claude/ worktrees).
+Next ticket:         LENS-022e (chase — IN FLIGHT, parallel session; owns erp/invoice/chase, cron route, vercel.json, CRON_SECRET env, payments/mission-control edits) and LENS-023a (gmail.readonly scope + read adapter — kicked off, independent of 022e; 023b branches after 022e merges). PENDING OWNER ACCEPTANCE (022d): reconnect Google on prod test account — both consent boxes, calendar sync unchanged, calendar+gmail rows. Before Morgan sees the sweep: seed prod test account invoice book + hand-reconcile (accuracy release gate).
 Last migration:      migration_005_invoice_payment.sql (APPLIED 2026-07-07: prod per owner; test verified via CI RLS suite green on #36. migration_004 applied to prod, test not separately verified)
-Next migration:      TBD (none expected for 022c/d/e)
-Last PR branch:      LENS-022c-dashboard-who-owes (merged as #37)
-Active feature spec: docs/features/Phase1/LENS-022_who-owes-invoices.md (LENS-021 spec: docs/features/Phase1/LENS-021_calendar-whos-next.md)
+Next migration:      migration_006_lead_thread_id.sql (LENS-023b — not yet written)
+Last PR branch:      LENS-023-gmail-lead-intake (spec, merged as #40)
+Active feature spec: docs/features/Phase1/LENS-023_gmail-lead-intake.md (LENS-022 spec: docs/features/Phase1/LENS-022_who-owes-invoices.md)
 ```
 
 ---
