@@ -72,6 +72,27 @@ export type IntegrationService =
   | 'calendar'
   | 'storage';
 
+export type InvoiceKind =
+  | 'deposit'
+  | 'final'
+  | 'addon'
+  | 'refund';
+
+// 'overdue' is deliberately absent: it is derived at read time from due_date,
+// never stored (LENS-D-023).
+export type InvoiceStatus =
+  | 'draft'
+  | 'sent'
+  | 'partial'
+  | 'paid'
+  | 'cancelled';
+
+export type PaymentMethod =
+  | 'stripe'
+  | 'cash'
+  | 'check'
+  | 'other';
+
 // ---------------------------------------------------------------------------
 // Migration 001 entities
 // ---------------------------------------------------------------------------
@@ -219,6 +240,7 @@ export interface CommLog {
   body: string | null;
   external_message_id: string | null;
   sequence_id: string | null;
+  invoice_id: string | null;
   sent_at: string;
   created_at: string;
 }
@@ -244,6 +266,43 @@ export interface IntegrationCredentials {
   key_version: number;
   expires_at: string | null;
   scope: string[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Migration 005 entities
+// ---------------------------------------------------------------------------
+
+export interface Invoice {
+  id: string;
+  photographer_id: string;
+  booking_id: string;
+  client_id: string;
+  amount_cents: number;
+  kind: InvoiceKind;
+  status: InvoiceStatus;
+  due_date: string; // date (YYYY-MM-DD)
+  recipient_email: string;
+  stripe_payment_link_url: string | null;
+  stripe_payment_intent_id: string | null;
+  quickbooks_invoice_id: string | null;
+  sent_at: string | null;
+  paid_at: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface Payment {
+  id: string;
+  photographer_id: string;
+  invoice_id: string;
+  amount_cents: number;
+  method: PaymentMethod;
+  stripe_charge_id: string | null;
+  received_at: string;
+  reconciled_at: string | null;
   created_at: string;
   updated_at: string;
 }

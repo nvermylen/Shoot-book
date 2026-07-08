@@ -750,3 +750,206 @@ describe('domain_event_log RLS (append-only)', () => {
     expect(error).not.toBeNull();
   });
 });
+
+// ============================================================
+// invoice + payment — full pattern (migration_005, LENS-022a)
+// ============================================================
+
+describe('invoice and payment RLS', () => {
+  let clientIdA: string;
+  let bookingIdA: string;
+  let invoiceIdA: string;
+  let paymentIdA: string;
+
+  beforeAll(async () => {
+    const { data: client, error: clientErr } = await h.photographerA
+      .from('client')
+      .insert({
+        photographer_id: h.userIdA,
+        display_name: 'Invoice Test Client',
+        email: 'invoice-client@test.local',
+        source: 'manual',
+      })
+      .select()
+      .single();
+    if (clientErr) throw new Error(`Invoice setup — client: ${clientErr.message}`);
+    clientIdA = client!.id;
+
+    const { data: pkg, error: pkgErr } = await h.photographerA
+      .from('package')
+      .insert({
+        photographer_id: h.userIdA,
+        name: 'Invoice Test Package',
+        price_cents: 42500,
+        deposit_cents: 10000,
+        session_type: 'senior',
+        included_locations_count: 1,
+        delivery_count: 25,
+      })
+      .select()
+      .single();
+    if (pkgErr) throw new Error(`Invoice setup — package: ${pkgErr.message}`);
+
+    const { data: booking, error: bookingErr } = await h.photographerA
+      .from('booking')
+      .insert({
+        photographer_id: h.userIdA,
+        client_id: clientIdA,
+        package_id: pkg!.id,
+      })
+      .select()
+      .single();
+    if (bookingErr) throw new Error(`Invoice setup — booking: ${bookingErr.message}`);
+    bookingIdA = booking!.id;
+  });
+
+  it('A can insert an invoice with own photographer_id', async () => {
+    const { data, error } = await h.photographerA
+      .from('invoice')
+      .insert({
+        photographer_id: h.userIdA,
+        booking_id: bookingIdA,
+        client_id: clientIdA,
+        amount_cents: 42500,
+        kind: 'final',
+        status: 'sent',
+        due_date: '2026-08-01',
+        recipient_email: 'invoice-client@test.local',
+      })
+      .select()
+      .single();
+
+    expect(error).toBeNull();
+    expect(data).not.toBeNull();
+    invoiceIdA = data!.id;
+  });
+
+  it('A can read own invoice (positive control)', async () => {
+    const { data } = await h.photographerA
+      .from('invoice')
+      .select('*')
+      .eq('id', invoiceIdA)
+      .single();
+
+    expect(data).not.toBeNull();
+    expect(data!.id).toBe(invoiceIdA);
+  });
+
+  it('B cannot read A\'s invoice', async () => {
+    const { data } = await h.photographerB
+      .from('invoice')
+      .select('*')
+      .eq('id', invoiceIdA)
+      .maybeSingle();
+
+    expect(data).toBeNull();
+  });
+
+  it('B cannot insert an invoice with A\'s photographer_id', async () => {
+    const { error } = await h.photographerB
+      .from('invoice')
+      .insert({
+        photographer_id: h.userIdA,
+        booking_id: bookingIdA,
+        client_id: clientIdA,
+        amount_cents: 100,
+        kind: 'addon',
+        status: 'sent',
+        due_date: '2026-08-01',
+        recipient_email: 'injected@test.local',
+      });
+
+    expect(error).not.toBeNull();
+  });
+
+  it('B cannot update A\'s invoice', async () => {
+    const { data } = await h.photographerB
+      .from('invoice')
+      .update({ status: 'cancelled' })
+      .eq('id', invoiceIdA)
+      .select();
+
+    expect(data).toHaveLength(0);
+  });
+
+  it('A can insert a payment against own invoice', async () => {
+    const { data, error } = await h.photographerA
+      .from('payment')
+      .insert({
+        photographer_id: h.userIdA,
+        invoice_id: invoiceIdA,
+        amount_cents: 10000,
+        method: 'check',
+      })
+      .select()
+      .single();
+
+    expect(error).toBeNull();
+    expect(data).not.toBeNull();
+    paymentIdA = data!.id;
+  });
+
+  it('B cannot read A\'s payment', async () => {
+    const { data } = await h.photographerB
+      .from('payment')
+      .select('*')
+      .eq('id', paymentIdA)
+      .maybeSingle();
+
+    expect(data).toBeNull();
+  });
+
+  it('B cannot insert a payment with A\'s photographer_id', async () => {
+    const { error } = await h.photographerB
+      .from('payment')
+      .insert({
+        photographer_id: h.userIdA,
+        invoice_id: invoiceIdA,
+        amount_cents: 100,
+        method: 'cash',
+      });
+
+    expect(error).not.toBeNull();
+  });
+
+  it('B cannot update A\'s payment', async () => {
+    const { data } = await h.photographerB
+      .from('payment')
+      .update({ amount_cents: 1 })
+      .eq('id', paymentIdA)
+      .select();
+
+    expect(data).toHaveLength(0);
+  });
+
+  it('B cannot delete A\'s payment', async () => {
+    const { data } = await h.photographerB
+      .from('payment')
+      .delete()
+      .eq('id', paymentIdA)
+      .select();
+
+    expect(data).toHaveLength(0);
+  });
+
+  it('A can delete own payment (manual-correction path, positive control)', async () => {
+    const { data, error } = await h.photographerA
+      .from('payment')
+      .delete()
+      .eq('id', paymentIdA)
+      .select();
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
+  });
+
+  it('B cannot delete A\'s invoice', async () => {
+    const { data } = await h.photographerB
+      .from('invoice')
+      .delete()
+      .eq('id', invoiceIdA)
+      .select();
+
+    expect(data).toHaveLength(0);
+  });
+});
