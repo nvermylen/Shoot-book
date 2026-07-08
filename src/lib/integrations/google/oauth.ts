@@ -16,6 +16,16 @@ const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 export const CALENDAR_READONLY_SCOPE =
   'https://www.googleapis.com/auth/calendar.readonly';
 
+export const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
+
+/**
+ * The one combined consent request (LENS-D-025 / spec D6): Calendar and Gmail
+ * share a single Google identity and a single "Connect Google" action. Never
+ * request gmail.send alone — a narrower re-consent can drop the calendar grant
+ * that LENS-021 sync depends on.
+ */
+export const GOOGLE_CONNECT_SCOPES = [CALENDAR_READONLY_SCOPE, GMAIL_SEND_SCOPE];
+
 export class GoogleOAuthConfigError extends Error {
   constructor(message: string) {
     super(message);
@@ -48,6 +58,8 @@ function getClientSecret(): string {
 /**
  * Build the consent-screen URL. `access_type=offline` + `prompt=consent` force
  * Google to issue a refresh token every time (not just the first connect).
+ * `include_granted_scopes=true` folds previously granted scopes into the new
+ * grant so a re-consent never silently narrows what the stored tokens can do.
  */
 export function buildConsentUrl(input: {
   redirectUri: string;
@@ -58,9 +70,10 @@ export function buildConsentUrl(input: {
     client_id: getClientId(),
     redirect_uri: input.redirectUri,
     response_type: 'code',
-    scope: (input.scopes ?? [CALENDAR_READONLY_SCOPE]).join(' '),
+    scope: (input.scopes ?? GOOGLE_CONNECT_SCOPES).join(' '),
     access_type: 'offline',
     prompt: 'consent',
+    include_granted_scopes: 'true',
     state: input.state,
   });
   return `${AUTH_ENDPOINT}?${params.toString()}`;
@@ -132,6 +145,24 @@ export async function exchangeCodeForTokens(input: {
       redirect_uri: input.redirectUri,
     }),
   );
+}
+
+/**
+ * Granular-consent guard (LENS-D-025 / spec D6): Google lets the user uncheck
+ * individual scopes on the consent screen, so the callback must decide per
+ * service from the scopes the token response says were ACTUALLY granted —
+ * never from what was requested. A credential row must never claim a scope
+ * its token lacks; that lie surfaces days later as a mid-chase 403.
+ */
+export function resolveGrantedServices(scope: string[] | null): {
+  calendar: boolean;
+  gmail: boolean;
+} {
+  const granted = new Set(scope ?? []);
+  return {
+    calendar: granted.has(CALENDAR_READONLY_SCOPE),
+    gmail: granted.has(GMAIL_SEND_SCOPE),
+  };
 }
 
 /**

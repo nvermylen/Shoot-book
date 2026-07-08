@@ -13,6 +13,33 @@
 
 ---
 
+### LENS-D-025 — One combined Google consent; tokens upserted onto both service rows; granted scopes verified, never assumed
+**Date:** 2026-07-07
+**Phase:** Phase 1 | Sprint 3 (LENS-022d)
+**Status:** ✅ Active
+
+**Decision:** Adding `gmail.send` re-runs the LENS-021a consent flow requesting **both** scopes (Calendar read + `gmail.send`) with `prompt=consent` + `include_granted_scopes=true`. The callback verifies which scopes were **actually granted** from the token response's `scope` field, then: overwrites the `'calendar'` credential row and upserts a `'gmail'` row with the same encrypted token pair, each row recording the granted union in `scope[]`. Granular consent (Google lets users uncheck individual scopes) is guarded: a missing `gmail.send` grant means no `'gmail'` row is written (callback redirects with `gmail_error=scope_not_granted`); a missing calendar grant leaves the previously stored calendar credential untouched rather than overwriting it with a narrower one. If nothing was granted, no rows are written (`calendar_error=no_scopes_granted`).
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| One combined consent, dual-row upsert (chosen) | Matches registry contract ("same Google identity — single consent"); one "Connect Google" action for Morgan; per-service lookup on `unique(photographer_id, service)` unchanged; each row self-sufficient for refresh-on-expiry | Two rows share one underlying grant — revoking at Google kills both while two rows persist locally |
+| Separate per-service connect flows | Independent lifecycle per service | Two consent screens for one Google account; a gmail-only re-consent can drop or stale the calendar grant LENS-021 sync depends on |
+| Single shared `'google'` credential row | No duplication | Breaks the existing per-service lookup contract and 021b refresh wiring; a scope-partial grant can't be represented honestly |
+
+**Choice:** Combined consent, dual-row upsert, verified-scope recording.
+
+**Rationale:** Google refresh tokens are multi-use and not rotated on use, so the duplicated refresh-token ciphertext stays valid on both rows even as their access tokens refresh independently. Recording only *verified* granted scopes prevents the worst failure: a row claiming a scope its token lacks, which surfaces days later as a mid-chase 403 — a silently dead payment chase, the incumbent's exact failure mode.
+
+**Implications:**
+- Existing Calendar sync must keep working unchanged after a reconnect — acceptance criterion of LENS-022d, not an assumption.
+- **Disconnect semantics (documented, not built):** Google revocation is grant-level — revoking kills BOTH services. A future per-service "disconnect" UI must warn accordingly; deleting one local row revokes nothing at Google.
+- 401/revoked at send time maps to `integration_auth_error` / `IntegrationAuthError` at the tool boundary — callers surface a "reconnect Google" state, never a silent stop.
+
+**Revisit Trigger:** Adding a third Google scope (e.g., `gmail.readonly` for lead intake) — same flow extends; or Google changes refresh-token rotation behavior, which breaks the dual-row duplication assumption.
+
+---
+
 ### LENS-D-022 — Client import defers address fields; report-don't-drop
 **Date:** 2026-06-22
 **Phase:** Phase 1 | Sprint 3
@@ -640,6 +667,7 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-025 | One combined Google consent; dual-row token upsert; granted scopes verified | 2026-07-07 | Security | ✅ Active |
 | LENS-D-022 | Client import defers address fields; report-don't-drop | 2026-06-22 | Schema | ✅ Active |
 | LENS-D-019 | Dedup app-enforced; unique index deferred | 2026-06-22 | Architecture | ✅ Active |
 | LENS-D-018 | Agent evals fixture-only, CI-gated | 2026-06-22 | Architecture | ✅ Active |
@@ -671,4 +699,4 @@ These have been flagged but not yet resolved. Each gets a numbered entry above w
 
 ---
 
-*Lens | Decisions Log | Last updated: 2026-06-22*
+*Lens | Decisions Log | Last updated: 2026-07-07*

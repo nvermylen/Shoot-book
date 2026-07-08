@@ -2,15 +2,23 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   exchangeCodeForTokens,
+  resolveGrantedServices,
   GoogleOAuthExchangeError,
 } from "@/lib/integrations/google/oauth";
-import { storeOAuthCredentials } from "@/lib/integrations/oauth/credentials";
+import {
+  storeOAuthCredentials,
+  type OAuthTokens,
+} from "@/lib/integrations/oauth/credentials";
 import { STATE_COOKIE } from "../connect/route";
 
 /**
  * Google OAuth callback. Verifies the CSRF state cookie, exchanges the code,
- * encrypts + stores tokens, and redirects home with a status query param.
- * Error redirects carry machine codes only — never token material.
+ * and stores encrypted tokens per service ACTUALLY granted (LENS-D-025 /
+ * spec D6): the same token pair is written to the 'calendar' row and upserted
+ * onto the 'gmail' row, each recording the granted scope union. Granular
+ * consent (user unchecked a scope) never writes a row claiming a scope its
+ * token lacks — and never overwrites the existing calendar credential with a
+ * narrower grant. Error redirects carry machine codes only — never tokens.
  */
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -45,17 +53,34 @@ export async function GET(request: NextRequest) {
 
   try {
     const tokens = await exchangeCodeForTokens({ code, redirectUri });
+    const granted = resolveGrantedServices(tokens.scope);
 
-    const stored = await storeOAuthCredentials(supabase, user.id, "calendar", {
+    // Everything unchecked (or Google omitted the scope field — treat as
+    // nothing verified): store no rows, keep any prior credentials intact.
+    if (!granted.calendar && !granted.gmail) return fail("no_scopes_granted");
+
+    const stored: OAuthTokens = {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresAt: tokens.expiresAt,
       scope: tokens.scope,
-    });
-    if (stored.error) return fail("store_failed");
+    };
+
+    if (granted.calendar) {
+      const res = await storeOAuthCredentials(supabase, user.id, "calendar", stored);
+      if (res.error) return fail("store_failed");
+    }
+    if (granted.gmail) {
+      const res = await storeOAuthCredentials(supabase, user.id, "gmail", stored);
+      if (res.error) return fail("store_failed");
+    }
 
     const dest = new URL("/", request.url);
-    dest.searchParams.set("calendar_connected", "1");
+    if (granted.calendar) dest.searchParams.set("calendar_connected", "1");
+    else dest.searchParams.set("calendar_error", "scope_not_granted");
+    if (granted.gmail) dest.searchParams.set("gmail_connected", "1");
+    else dest.searchParams.set("gmail_error", "scope_not_granted");
+
     const res = NextResponse.redirect(dest);
     res.cookies.delete(STATE_COOKIE);
     return res;
