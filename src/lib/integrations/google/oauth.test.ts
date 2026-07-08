@@ -3,9 +3,11 @@ import {
   buildConsentUrl,
   exchangeCodeForTokens,
   refreshAccessToken,
+  resolveGrantedServices,
   GoogleOAuthConfigError,
   GoogleOAuthExchangeError,
   CALENDAR_READONLY_SCOPE,
+  GMAIL_SEND_SCOPE,
 } from './oauth';
 
 const CLIENT_ID = 'test-client-id.apps.googleusercontent.com';
@@ -41,9 +43,13 @@ describe('google oauth helper', () => {
       expect(url.searchParams.get('client_id')).toBe(CLIENT_ID);
       expect(url.searchParams.get('redirect_uri')).toBe(REDIRECT);
       expect(url.searchParams.get('response_type')).toBe('code');
-      expect(url.searchParams.get('scope')).toBe(CALENDAR_READONLY_SCOPE);
+      // One combined consent — calendar read + gmail.send (LENS-D-025 / D6).
+      expect(url.searchParams.get('scope')).toBe(
+        `${CALENDAR_READONLY_SCOPE} ${GMAIL_SEND_SCOPE}`,
+      );
       expect(url.searchParams.get('access_type')).toBe('offline');
       expect(url.searchParams.get('prompt')).toBe('consent');
+      expect(url.searchParams.get('include_granted_scopes')).toBe('true');
       expect(url.searchParams.get('state')).toBe('abc123');
     });
 
@@ -109,6 +115,36 @@ describe('google oauth helper', () => {
       await expect(
         exchangeCodeForTokens({ code: 'c', redirectUri: REDIRECT }),
       ).rejects.toMatchObject({ code: 'malformed_token_response' });
+    });
+  });
+
+  describe('resolveGrantedServices', () => {
+    it('recognizes both services when both scopes were granted', () => {
+      expect(
+        resolveGrantedServices([CALENDAR_READONLY_SCOPE, GMAIL_SEND_SCOPE]),
+      ).toEqual({ calendar: true, gmail: true });
+    });
+
+    it('handles a partial grant — user unchecked gmail on the consent screen', () => {
+      expect(resolveGrantedServices([CALENDAR_READONLY_SCOPE])).toEqual({
+        calendar: true,
+        gmail: false,
+      });
+      expect(resolveGrantedServices([GMAIL_SEND_SCOPE])).toEqual({
+        calendar: false,
+        gmail: true,
+      });
+    });
+
+    it('treats a missing scope field as nothing verified — never assume from the request', () => {
+      expect(resolveGrantedServices(null)).toEqual({ calendar: false, gmail: false });
+      expect(resolveGrantedServices([])).toEqual({ calendar: false, gmail: false });
+    });
+
+    it('ignores unrelated scopes (openid, email, …)', () => {
+      expect(
+        resolveGrantedServices(['openid', 'https://www.googleapis.com/auth/userinfo.email']),
+      ).toEqual({ calendar: false, gmail: false });
     });
   });
 

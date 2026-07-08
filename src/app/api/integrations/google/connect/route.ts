@@ -6,8 +6,10 @@ import { buildConsentUrl } from "@/lib/integrations/google/oauth";
 export const STATE_COOKIE = "google_oauth_state";
 
 /**
- * Starts the Google Calendar connect flow. Auth-guarded; sets a CSRF state
- * cookie and redirects to Google's consent screen.
+ * Starts the Google connect flow — one combined consent for Calendar read +
+ * gmail.send (LENS-D-025 / spec D6; scopes default in buildConsentUrl).
+ * Auth-guarded; sets a CSRF state cookie and redirects to Google's consent
+ * screen.
  */
 export async function GET(request: Request) {
   const supabase = await createClient();

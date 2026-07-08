@@ -5,7 +5,11 @@ export type ErpErrorCode =
   | 'rls_denied'
   | 'db_error'
   | 'validation_error'
-  | 'integration_error';
+  | 'integration_error'
+  // Integration credentials are dead (401 / revoked / invalid_grant) — retrying
+  // is pointless; the fix is the photographer reconnecting Google. Callers must
+  // surface a "reconnect" state, never a silent stop (LENS-022d).
+  | 'integration_auth_error';
 
 export interface ErpError {
   code: ErpErrorCode;

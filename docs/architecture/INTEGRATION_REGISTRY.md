@@ -39,9 +39,20 @@ When state diverges across a bidirectional integration, **ERP wins** (see `AGENT
 **Direction:** ⬌ Bidirectional
 **Primary agents:** LeadAgent (inbound), CommsAgent (outbound + thread reads)
 
+> **Ship status (LENS-022d):** partially shipped. The `gmail.send` slice is
+> live (`src/lib/integrations/gmail/client.ts`) for the BillingAgent payment
+> chase — minimal input `{to, subject, body_html, body_text}`; `cc`,
+> `in_reply_to`, and `attachments` land with the first CommsAgent flow.
+> Inbound (Pub/Sub), `gmail.read_thread`, `gmail.search`, and labels are
+> pending the Gmail lead-intake ticket. Tool permission is `billing`-only
+> until the other consumer agents ship (least privilege; the table below is
+> the target contract). Consent is one combined Google grant with Calendar —
+> see LENS-D-025: granted scopes are verified from the token response, and a
+> credential row never claims a scope its token lacks.
+
 ### Auth
 - **Method:** OAuth 2.0
-- **Scopes:** `gmail.readonly`, `gmail.send`, `gmail.modify` (for label management)
+- **Scopes:** `gmail.readonly`, `gmail.send`, `gmail.modify` (for label management). Shipped so far: `gmail.send` only, requested in one combined consent with the Calendar read scope (LENS-D-025).
 - **Token storage:** `integration_credentials` table, encrypted (see `SECURITY.md`)
 - **Refresh:** adapter handles automatically; refresh window = 5 min before expiry
 
