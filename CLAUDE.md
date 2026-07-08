@@ -83,13 +83,13 @@ If a Claude Code question can be answered by these files, the answer is in those
 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
-Current sprint:      Sprint 3 — IN PROGRESS (LENS-018/019/020 merged; 401 clients in prod, client drawer live with parent-contact capture)
-Last ticket:         LENS-020  (Client drawer — real data + parent-contact capture — MERGED #23)
-Next ticket:         LENS-021  (021a OAuth connect BUILT + verified live end-to-end; next: 021b Calendar read adapter → 021c sync → 021d dashboard card)
-Last migration:      migration_003_source_message_id.sql (applied to production)
-Next migration:      TBD (none needed for 021a — integration_credentials RLS already complete; LENS-022 will add invoice/payment for "who owes")
-Last PR branch:      LENS-021a-google-oauth-calendar
-Active feature spec: docs/features/Phase1/LENS-021_calendar-whos-next.md
+Current sprint:      Sprint 3 — IN PROGRESS (LENS-018/019/020 merged; LENS-021a/b/c merged #26/#27/#28; 021d in this PR — "who's next" pillar complete on merge)
+Last ticket:         LENS-021  (021a–d: Calendar OAuth → read adapter → booking sync → dashboard card)
+Next ticket:         LENS-022  (who owes / payment chase — spec drafted; 022a/b in flight in parallel session; 022c/d/e branch after 021d merges)
+Last migration:      migration_004_booking_calendar_sync.sql (generated in #28 — VERIFY applied to prod + test before relying on calendar sync)
+Next migration:      migration_005_invoice_payment.sql (LENS-022a — in flight)
+Last PR branch:      LENS-021d-dashboard-whos-next
+Active feature spec: docs/features/Phase1/LENS-022_who-owes-invoices.md (LENS-021 spec: docs/features/Phase1/LENS-021_calendar-whos-next.md)
 ```
 
 ---
@@ -327,4 +327,4 @@ npm run lint        # zero errors
 
 ---
 
-*Lens | CLAUDE.md | Updated: 2026-06-22 | Phase 1 Sprint 2 | + HABIT_DESIGN*
+*Lens | CLAUDE.md | Updated: 2026-07-07 | Phase 1 Sprint 3 | + HABIT_DESIGN*
