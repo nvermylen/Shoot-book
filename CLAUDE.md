@@ -84,8 +84,8 @@ If a Claude Code question can be answered by these files, the answer is in those
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
 Current sprint:      Sprint 3 — IN PROGRESS (LENS-018/019/020 merged; LENS-021 COMPLETE — a/b/c/d merged #26/#27/#28/#31; "who's next" pillar live)
-Last ticket:         LENS-022b (invoice ERP + real payments page — MERGED #36; 022a migration merged #33)
-Next ticket:         LENS-022d in flight (#35, parallel session); then 022c (dashboard money card — resolves mission-control LENS-022 TODOs) and 022e (chase — needs 022b+022d). Seed the prod test account with a realistic invoice book before 022c ships (accuracy release gate).
+Last ticket:         LENS-022d (gmail.send adapter + combined-scope Google consent — MERGED #35; 022a #33, 022b #36. LENS-D-025 logged)
+Next ticket:         LENS-022c (dashboard money card — resolves mission-control LENS-022 TODOs) and 022e (chase — 022b+022d both merged, unblocked; branch from main). Seed the prod test account with a realistic invoice book before 022c ships (accuracy release gate). PENDING OWNER ACCEPTANCE (022d): reconnect Google on prod test account — both consent boxes, calendar sync unchanged, calendar+gmail rows in integration_credentials.
 Last migration:      migration_005_invoice_payment.sql (APPLIED 2026-07-07: prod per owner; test verified via CI RLS suite green on #36. migration_004 applied to prod, test not separately verified)
 Next migration:      TBD (none expected for 022c/d/e)
 Last PR branch:      LENS-022b-invoice-erp-payments (merged as #36; #34 auto-closed on #33's branch deletion, replaced by #36)
