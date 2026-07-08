@@ -300,10 +300,16 @@ export interface RecordPaymentInput {
   received_at?: string;
 }
 
-/** Recompute an invoice's status from the sum of its payments. */
+/**
+ * Recompute an invoice's status from the sum of its payments. Only statuses in
+ * the payment-driven lifecycle (sent/partial/paid) are recomputed — cancelled
+ * and draft are preserved. Without this guard, deleting a stale payment record
+ * off a cancelled invoice would flip it back to 'sent' and resurrect it into
+ * "who owes" (a Rule 4 accuracy breach).
+ */
 async function recomputeInvoiceStatus(
   supabase: SupabaseClient,
-  invoice: Pick<Invoice, 'id' | 'amount_cents'>,
+  invoice: Pick<Invoice, 'id' | 'amount_cents' | 'status'>,
 ): Promise<ErpResult<{ status: InvoiceStatus; paid_cents: number }>> {
   const { data: payments, error: payErr } = await supabase
     .from('payment')
@@ -313,6 +319,11 @@ async function recomputeInvoiceStatus(
 
   const rows = payments ?? [];
   const paid_cents = rows.reduce((sum, p) => sum + p.amount_cents, 0);
+
+  if (invoice.status === 'cancelled' || invoice.status === 'draft') {
+    return { data: { status: invoice.status, paid_cents }, error: null };
+  }
+
   const status: InvoiceStatus =
     paid_cents >= invoice.amount_cents ? 'paid' : paid_cents > 0 ? 'partial' : 'sent';
   const paid_at =
@@ -382,6 +393,11 @@ export async function recordPayment(
     // Payment row exists but the invoice status is stale — surface loudly so
     // the caller can retry; a silently stale "who owes" is a Rule 4 breach.
     warnings.push(`status_recompute_failed: ${recompute.error.detail}`);
+  } else if (recompute.data.paid_cents > invoice.amount_cents) {
+    // Recorded as asked (tips and rounding are real) but flagged, not silent.
+    warnings.push(
+      `overpayment_recorded: payments total ${recompute.data.paid_cents}¢ exceeds invoice amount ${invoice.amount_cents}¢`,
+    );
   }
 
   try {
@@ -435,7 +451,7 @@ export async function deletePayment(
 
   const { data: invoice, error: invErr } = await supabase
     .from('invoice')
-    .select('id, amount_cents')
+    .select('id, amount_cents, status')
     .eq('id', payment.invoice_id)
     .single();
   if (invErr) return { data: null, error: toErpError(invErr) };
@@ -533,30 +549,40 @@ export interface UninvoicedBooking {
 /**
  * Upcoming bookings with no invoice on file — the seed list for the
  * cutover-assist empty state ("6 upcoming shoots have no invoice on file").
+ *
+ * "Upcoming" starts at the photographer's local calendar day, not the UTC
+ * instant: a shoot earlier today still deserves an invoice. Soft-deleted
+ * invoices don't count as "on file" — a booking whose only invoice was
+ * deleted needs one again.
  */
 export async function listUpcomingBookingsWithoutInvoice(
   supabase: SupabaseClient,
 ): Promise<ErpResult<UninvoicedBooking[]>> {
+  const tz = await getTimezone(supabase);
+  if (tz.error) return { data: null, error: tz.error };
+
   const { data, error } = await supabase
     .from('booking')
     .select(
       `id, session_date, status,
        client:client_id (id, display_name, email, parent_name, parent_email),
        package:package_id (name, price_cents, deposit_cents),
-       invoice (id)`,
+       invoice (id, deleted_at)`,
     )
     .is('deleted_at', null)
     .in('status', ['tentative', 'confirmed'])
-    .gte('session_date', new Date().toISOString())
+    // Local date at UTC midnight — errs inclusive by the tz offset, which for
+    // a "needs an invoice" list is the right direction to be wrong in.
+    .gte('session_date', localDateString(tz.data))
     .order('session_date', { ascending: true });
 
   if (error) return { data: null, error: toErpError(error) };
 
   const rows = (data ?? []) as unknown as (UninvoicedBooking & {
-    invoice: { id: string }[];
+    invoice: { id: string; deleted_at: string | null }[];
   })[];
   const uninvoiced = rows
-    .filter((b) => (b.invoice ?? []).length === 0)
+    .filter((b) => (b.invoice ?? []).filter((i) => !i.deleted_at).length === 0)
     .map((b) => ({
       id: b.id,
       session_date: b.session_date,

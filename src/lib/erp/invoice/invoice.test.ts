@@ -5,6 +5,7 @@ import {
   deletePayment,
   cancelInvoice,
   listOpenInvoices,
+  listUpcomingBookingsWithoutInvoice,
   localDateString,
 } from './index';
 import * as bus from '@/lib/events/bus';
@@ -305,6 +306,33 @@ describe('recordPayment', () => {
     });
   });
 
+  it('records an overpayment but flags it with a warning, never silently', async () => {
+    const { supabase, chains } = mockSupabase({
+      invoice: [
+        { data: { id: 'invoice-1', amount_cents: 42_500, status: 'sent' }, error: null },
+        { error: null },
+      ],
+      payment: [
+        { data: { ...PAYMENT_ROW, amount_cents: 50_000 }, error: null },
+        { data: [{ amount_cents: 50_000, received_at: '2026-07-07T10:00:00Z' }], error: null },
+      ],
+    });
+
+    const result = await recordPayment(supabase as never, {
+      photographer_id: 'photo-1',
+      invoice_id: 'invoice-1',
+      amount_cents: 50_000,
+      method: 'check',
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.warning).toContain('overpayment_recorded');
+    expect(chains.invoice.update).toHaveBeenCalledWith({
+      status: 'paid',
+      paid_at: '2026-07-07T10:00:00Z',
+    });
+  });
+
   it('rejects method stripe until Phase 2, with no db call', async () => {
     const { supabase } = mockSupabase({});
 
@@ -389,7 +417,7 @@ describe('deletePayment', () => {
         { data: [], error: null }, // recompute read — none left
       ],
       invoice: [
-        { data: { id: 'invoice-1', amount_cents: 42_500 }, error: null },
+        { data: { id: 'invoice-1', amount_cents: 42_500, status: 'paid' }, error: null },
         { error: null }, // status update
       ],
     });
@@ -401,6 +429,28 @@ describe('deletePayment', () => {
       status: 'sent',
       paid_at: null,
     });
+  });
+
+  it('preserves a cancelled invoice — deleting a stale payment must NOT resurrect it into "who owes"', async () => {
+    const { supabase, chains } = mockSupabase({
+      payment: [
+        { data: PAYMENT_ROW, error: null }, // fetch
+        { error: null }, // delete
+        { data: [], error: null }, // recompute read — none left
+      ],
+      invoice: [
+        {
+          data: { id: 'invoice-1', amount_cents: 42_500, status: 'cancelled' },
+          error: null,
+        },
+      ],
+    });
+
+    const result = await deletePayment(supabase as never, 'payment-1');
+
+    expect(result.error).toBeNull();
+    // The payment is gone, but the cancelled status is never rewritten.
+    expect(chains.invoice.update).not.toHaveBeenCalled();
   });
 });
 
@@ -530,5 +580,58 @@ describe('derived overdue (LENS-D-023) — computed in the photographer timezone
     const result = await listOpenInvoices(supabase as never);
     // Even if a paid row slips into the result set, derivation must not mark it overdue.
     expect(result.data?.invoices[0].is_overdue).toBe(false);
+  });
+});
+
+describe('listUpcomingBookingsWithoutInvoice — cutover assist (Rule 3)', () => {
+  const CLIENT = {
+    id: 'client-1',
+    display_name: 'Emma Hartwell',
+    email: 'emma@example.com',
+    parent_name: 'Susan Hartwell',
+    parent_email: 'susan@example.com',
+  };
+  const PKG = { name: 'Senior', price_cents: 85_000, deposit_cents: 25_000 };
+
+  function bookingRow(id: string, invoice: { id: string; deleted_at: string | null }[]) {
+    return {
+      id,
+      session_date: '2026-07-20T17:00:00Z',
+      status: 'confirmed',
+      client: CLIENT,
+      package: PKG,
+      invoice,
+    };
+  }
+
+  it('lists bookings with no live invoice — a soft-deleted invoice does not count as "on file"', async () => {
+    const { supabase, chains } = mockSupabase({
+      photographer: [{ data: { timezone: 'America/Chicago' }, error: null }],
+      booking: [
+        {
+          data: [
+            bookingRow('booking-none', []),
+            bookingRow('booking-deleted-invoice', [
+              { id: 'invoice-gone', deleted_at: '2026-07-01T00:00:00Z' },
+            ]),
+            bookingRow('booking-live-invoice', [{ id: 'invoice-live', deleted_at: null }]),
+          ],
+          error: null,
+        },
+      ],
+    });
+
+    const result = await listUpcomingBookingsWithoutInvoice(supabase as never);
+
+    expect(result.error).toBeNull();
+    expect(result.data?.map((b) => b.id)).toEqual([
+      'booking-none',
+      'booking-deleted-invoice',
+    ]);
+    // "Upcoming" starts at the photographer's local calendar day, not a UTC instant.
+    expect(chains.booking.gte).toHaveBeenCalledWith(
+      'session_date',
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    );
   });
 });
