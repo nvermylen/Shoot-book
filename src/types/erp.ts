@@ -158,7 +158,8 @@ export interface Booking {
   id: string;
   photographer_id: string;
   client_id: string;
-  package_id: string;
+  /** Nullable since migration_004 — calendar-imported bookings get a package later. */
+  package_id: string | null;
   session_date: string | null;
   duration_minutes: number | null;
   status: BookingStatus;

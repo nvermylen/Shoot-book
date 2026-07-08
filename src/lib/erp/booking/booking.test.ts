@@ -4,6 +4,7 @@ import {
   getBooking,
   assignLocations,
   cancelBooking,
+  syncBookingFromCalendarEvent,
 } from './index';
 import * as bus from '@/lib/events/bus';
 
@@ -179,6 +180,97 @@ describe('booking module', () => {
 
       expect(result.data).toBeNull();
       expect(result.error?.code).toBe('validation_error');
+    });
+  });
+
+  describe('syncBookingFromCalendarEvent', () => {
+    /** Chain for the sync path: select→eq→eq→maybeSingle, then update/insert→select→single. */
+    function mockSyncSupabase(
+      lookup: { data: unknown; error: unknown },
+      write: { data: unknown; error: unknown } = { data: null, error: null },
+    ) {
+      const chain = {
+        select: vi.fn(),
+        insert: vi.fn(),
+        update: vi.fn(),
+        eq: vi.fn(),
+        maybeSingle: vi.fn().mockResolvedValue(lookup),
+        single: vi.fn().mockResolvedValue(write),
+      };
+      chain.select.mockReturnValue(chain);
+      chain.insert.mockReturnValue(chain);
+      chain.update.mockReturnValue(chain);
+      chain.eq.mockReturnValue(chain);
+      return { from: vi.fn().mockReturnValue(chain), _chain: chain };
+    }
+
+    const INPUT = {
+      photographer_id: 'photo-1',
+      client_id: 'client-1',
+      external_calendar_event_id: 'evt-1',
+      session_date: '2026-07-08T17:30:00-05:00',
+      duration_minutes: 90,
+      status: 'confirmed' as const,
+    };
+
+    it('inserts when no booking exists and publishes booking.created', async () => {
+      const publishSpy = vi.spyOn(bus, 'publish').mockResolvedValue(undefined);
+      const created = { ...BOOKING_ROW, package_id: null, external_calendar_event_id: 'evt-1' };
+      const supabase = mockSyncSupabase({ data: null, error: null }, { data: created, error: null });
+
+      const result = await syncBookingFromCalendarEvent(supabase as never, INPUT);
+
+      expect(result.error).toBeNull();
+      expect(result.data?.outcome).toBe('created');
+      expect(supabase._chain.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          external_calendar_event_id: 'evt-1',
+          client_id: 'client-1',
+          status: 'confirmed',
+        }),
+      );
+      // package_id is never written by sync — Lens-owned
+      expect(supabase._chain.insert.mock.calls[0][0]).not.toHaveProperty('package_id');
+      expect(publishSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'booking.created' }),
+        expect.anything(),
+      );
+    });
+
+    it('updates schedule fields when a live booking exists — no event published', async () => {
+      const publishSpy = vi.spyOn(bus, 'publish').mockResolvedValue(undefined);
+      const existing = { ...BOOKING_ROW, deleted_at: null, external_calendar_event_id: 'evt-1' };
+      const supabase = mockSyncSupabase(
+        { data: existing, error: null },
+        { data: existing, error: null },
+      );
+
+      const result = await syncBookingFromCalendarEvent(supabase as never, INPUT);
+
+      expect(result.data?.outcome).toBe('updated');
+      expect(supabase._chain.update).toHaveBeenCalledWith({
+        session_date: INPUT.session_date,
+        duration_minutes: 90,
+        status: 'confirmed',
+      });
+      expect(publishSpy).not.toHaveBeenCalled();
+    });
+
+    it('skips a soft-deleted booking — user deletion wins over re-sync', async () => {
+      const deleted = { ...BOOKING_ROW, deleted_at: '2026-07-01T00:00:00Z' };
+      const supabase = mockSyncSupabase({ data: deleted, error: null });
+
+      const result = await syncBookingFromCalendarEvent(supabase as never, INPUT);
+
+      expect(result.data?.outcome).toBe('skipped_deleted');
+      expect(supabase._chain.update).not.toHaveBeenCalled();
+      expect(supabase._chain.insert).not.toHaveBeenCalled();
+    });
+
+    it('surfaces lookup errors', async () => {
+      const supabase = mockSyncSupabase({ data: null, error: { code: '42P01', message: 'boom' } });
+      const result = await syncBookingFromCalendarEvent(supabase as never, INPUT);
+      expect(result.error?.code).toBe('db_error');
     });
   });
 });
