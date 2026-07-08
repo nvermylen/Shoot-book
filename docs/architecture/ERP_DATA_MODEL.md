@@ -148,8 +148,8 @@ A scheduled session. The hub entity — most other entities point at it.
 - `duration_minutes` (int)
 - `status` (text — 'tentative' | 'confirmed' | 'completed' | 'cancelled')
 - `contract_id` (uuid FK → contract, nullable until signed)
-- `deposit_invoice_id` (uuid FK → invoice, nullable until created)
-- `final_invoice_id` (uuid FK → invoice, nullable until created)
+- `deposit_invoice_id` (uuid FK → invoice, nullable until created — true FK as of migration_005; was text in migration_002)
+- `final_invoice_id` (uuid FK → invoice, nullable until created — true FK as of migration_005; was text in migration_002)
 - `external_calendar_event_id` (text — Google Calendar ID; **unique per
   photographer** when set, so calendar sync is idempotent: re-syncing an event
   updates its booking instead of duplicating it)
@@ -201,7 +201,7 @@ A request for payment. Two per booking is typical: deposit + final.
 - `client_id` (uuid FK)
 - `amount_cents` (int)
 - `kind` (text — 'deposit' | 'final' | 'addon' | 'refund')
-- `status` (text — 'draft' | 'sent' | 'paid' | 'partial' | 'overdue' | 'cancelled')
+- `status` (text — 'draft' | 'sent' | 'partial' | 'paid' | 'cancelled'; **'overdue' is DERIVED at read time** from `due_date < today` while sent/partial, in the photographer's timezone — never stored, so it can never be stale. See LENS-022 D1 / LENS-D-023.)
 - `due_date` (date)
 - `recipient_email` (text — defaults to client.parent_email if set, else client.email)
 - `stripe_payment_link_url` (text, nullable)
@@ -283,6 +283,7 @@ Every communication — sent or received, automated or manual. The append-only l
 - `body` (text)
 - `external_message_id` (text — Gmail thread ID, etc.)
 - `sequence_id` (uuid FK → comm_sequence, nullable)
+- `invoice_id` (uuid FK → invoice, nullable — set on payment reminders; chase state is derived from these rows, see LENS-D-024)
 - `sent_at` (timestamptz)
 - `created_at`
 
@@ -442,4 +443,4 @@ See `DOMAIN_GLOSSARY.md` for the term-to-column mapping.
 
 ---
 
-*Lens | ERP Data Model | Last updated: 2026-06-21*
+*Lens | ERP Data Model | Last updated: 2026-07-07*
