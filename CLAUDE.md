@@ -84,11 +84,11 @@ If a Claude Code question can be answered by these files, the answer is in those
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
 Current sprint:      Sprint 3 — IN PROGRESS (LENS-018/019/020 merged; LENS-021 COMPLETE — a/b/c/d merged #26/#27/#28/#31; "who's next" pillar live)
-Last ticket:         LENS-021  (021a–d: Calendar OAuth → read adapter → booking sync → dashboard card — all merged)
-Next ticket:         LENS-022  (who owes / payment chase — spec drafted; 022a/b in flight in parallel session; 022c/d/e now unblocked — 021 merged)
+Last ticket:         LENS-022a (migration_005 + spec + LENS-D-023/024 — MERGED #33)
+Next ticket:         LENS-022b (PR #36 OPEN — invoice ERP + payments page; MERGE GATE: migration_005 applied to prod+test first, CI RLS job fails until test has it. #34 was auto-closed when its base branch was deleted on #33's merge — #36 replaces it). 022d in flight (#35, parallel session); 022c/e after 022b.
 Last migration:      migration_004_booking_calendar_sync.sql (APPLIED to prod, verified 2026-07-07: booking.package_id nullable + unique index present; test project not separately verified)
-Next migration:      migration_005_invoice_payment.sql (LENS-022a — in flight)
-Last PR branch:      LENS-021d-dashboard-whos-next (merged as #31; #29 was auto-closed when its base branch was deleted on #28's merge)
+Next migration:      migration_005_invoice_payment.sql (MERGED to main #33 — NOT YET APPLIED to prod or test; apply to BOTH before merging #36)
+Last PR branch:      LENS-022a-invoice-payment-schema (merged as #33)
 Active feature spec: docs/features/Phase1/LENS-022_who-owes-invoices.md (LENS-021 spec: docs/features/Phase1/LENS-021_calendar-whos-next.md)
 ```
 
