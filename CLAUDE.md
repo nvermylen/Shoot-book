@@ -83,12 +83,12 @@ If a Claude Code question can be answered by these files, the answer is in those
 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
-Current sprint:      Sprint 3 — IN PROGRESS (LENS-018/019/020 merged; LENS-021 COMPLETE — a/b/c/d merged #26/#27/#28/#31; "who's next" pillar live)
-Last ticket:         LENS-022 a–d ALL MERGED (#33/#36/#35/#37) + recompute guards #38 (cancelled-invoice resurrection fix — 022e session MUST rebase onto this). LENS-023 spec merged #40. Cleanups: #30 (contract.deleted_at doc), #39 (vitest excludes .claude/ worktrees).
-Next ticket:         LENS-022e (chase — IN FLIGHT, parallel session; owns erp/invoice/chase, cron route, vercel.json, CRON_SECRET env, payments/mission-control edits) and LENS-023a (gmail.readonly scope + read adapter — kicked off, independent of 022e; 023b branches after 022e merges). PENDING OWNER ACCEPTANCE (022d): reconnect Google on prod test account — both consent boxes, calendar sync unchanged, calendar+gmail rows. Before Morgan sees the sweep: seed prod test account invoice book + hand-reconcile (accuracy release gate).
-Last migration:      migration_005_invoice_payment.sql (APPLIED 2026-07-07: prod per owner; test verified via CI RLS suite green on #36. migration_004 applied to prod, test not separately verified)
-Next migration:      migration_006_lead_thread_id.sql (LENS-023b — not yet written)
-Last PR branch:      LENS-023-gmail-lead-intake (spec, merged as #40)
+Current sprint:      Sprint 3 — IN PROGRESS (LENS-021 "who's next" live; LENS-022 COMPLETE — a/b/c/d/e all merged, payment chase shipped #41; LENS-023a merged #42)
+Last ticket:         LENS-022e MERGED #41 (chase engine, cron route, vercel.json, migration_006, pause UI) and LENS-023a MERGED #42 (gmail.readonly in combined consent + Gmail read adapter: listInboxMessageIds/getMessage). Reviewed + merged 2026-08-01.
+Next ticket:         LENS-023b (intake runner + cron — UNBLOCKED, branch from main; reuses 022e cron pattern; needs migration_007) then LENS-023c (inquiries page real). PENDING OWNER ACTIONS: (1) apply migration_006 to prod + test — until then chase doesn't run and pause toggle errors; (2) set CRON_SECRET in Vercel env — route fails closed until set; (3) add gmail.readonly to Google Cloud Console consent screen; (4) 022d/023a acceptance: reconnect Google on prod test account — all three consent boxes, calendar sync unchanged, calendar+gmail rows; (5) E2E chase acceptance on prod test account. Before Morgan sees the sweep: seed prod test account invoice book + hand-reconcile (accuracy release gate).
+Last migration:      migration_006_comm_sequence_state_invoice.sql (in repo via #41 — NOT YET APPLIED to prod or test. migration_005 applied 2026-07-07: prod per owner; test verified via CI RLS suite green on #36)
+Next migration:      migration_007_lead_thread_id.sql (LENS-023b — not yet written; renumbered from 006, which 022e took for the per-invoice pause column)
+Last PR branch:      LENS-023a-gmail-readonly-scope (merged as #42)
 Active feature spec: docs/features/Phase1/LENS-023_gmail-lead-intake.md (LENS-022 spec: docs/features/Phase1/LENS-022_who-owes-invoices.md)
 ```
 
@@ -328,4 +328,4 @@ npm run lint        # zero errors
 
 ---
 
-*Lens | CLAUDE.md | Updated: 2026-07-07 | Phase 1 Sprint 3 | + HABIT_DESIGN*
+*Lens | CLAUDE.md | Updated: 2026-08-01 | Phase 1 Sprint 3 | + HABIT_DESIGN*
