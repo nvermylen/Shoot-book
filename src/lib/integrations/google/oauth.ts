@@ -18,13 +18,21 @@ export const CALENDAR_READONLY_SCOPE =
 
 export const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
 
+export const GMAIL_READONLY_SCOPE =
+  'https://www.googleapis.com/auth/gmail.readonly';
+
 /**
  * The one combined consent request (LENS-D-025 / spec D6): Calendar and Gmail
  * share a single Google identity and a single "Connect Google" action. Never
- * request gmail.send alone — a narrower re-consent can drop the calendar grant
- * that LENS-021 sync depends on.
+ * request a subset alone — a narrower re-consent can drop a grant an existing
+ * feature depends on (calendar sync, the payment chase). gmail.readonly added
+ * for lead intake (LENS-023a — D-025's anticipated revisit trigger).
  */
-export const GOOGLE_CONNECT_SCOPES = [CALENDAR_READONLY_SCOPE, GMAIL_SEND_SCOPE];
+export const GOOGLE_CONNECT_SCOPES = [
+  CALENDAR_READONLY_SCOPE,
+  GMAIL_SEND_SCOPE,
+  GMAIL_READONLY_SCOPE,
+];
 
 export class GoogleOAuthConfigError extends Error {
   constructor(message: string) {
@@ -156,12 +164,22 @@ export async function exchangeCodeForTokens(input: {
  */
 export function resolveGrantedServices(scope: string[] | null): {
   calendar: boolean;
+  /** gmail.send granted — gates the 'gmail' credential row (D-025 rule unchanged). */
   gmail: boolean;
+  /**
+   * gmail.readonly granted — gates lead intake (LENS-023). Recorded in the
+   * 'gmail' row's scope[]; a send-only grant keeps the chase alive with
+   * intake off, and a readonly-only grant (send unchecked) stores no row —
+   * conservative, and honest: intake reports "not connected" rather than a
+   * row existing whose primary capability is missing.
+   */
+  gmailRead: boolean;
 } {
   const granted = new Set(scope ?? []);
   return {
     calendar: granted.has(CALENDAR_READONLY_SCOPE),
     gmail: granted.has(GMAIL_SEND_SCOPE),
+    gmailRead: granted.has(GMAIL_READONLY_SCOPE),
   };
 }
 

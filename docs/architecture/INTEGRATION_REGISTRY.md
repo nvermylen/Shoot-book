@@ -39,20 +39,21 @@ When state diverges across a bidirectional integration, **ERP wins** (see `AGENT
 **Direction:** ⬌ Bidirectional
 **Primary agents:** LeadAgent (inbound), CommsAgent (outbound + thread reads)
 
-> **Ship status (LENS-022d):** partially shipped. The `gmail.send` slice is
-> live (`src/lib/integrations/gmail/client.ts`) for the BillingAgent payment
-> chase — minimal input `{to, subject, body_html, body_text}`; `cc`,
-> `in_reply_to`, and `attachments` land with the first CommsAgent flow.
-> Inbound (Pub/Sub), `gmail.read_thread`, `gmail.search`, and labels are
-> pending the Gmail lead-intake ticket. Tool permission is `billing`-only
-> until the other consumer agents ship (least privilege; the table below is
-> the target contract). Consent is one combined Google grant with Calendar —
-> see LENS-D-025: granted scopes are verified from the token response, and a
+> **Ship status (LENS-022d + 023a):** partially shipped. Live in
+> `src/lib/integrations/gmail/client.ts`: the `gmail.send` slice (BillingAgent
+> payment chase — minimal input `{to, subject, body_html, body_text}`; `cc`,
+> `in_reply_to`, and `attachments` land with the first CommsAgent flow) and
+> the **read slice** (`listInboxMessageIds` + `getMessage`, LENS-023a) for
+> lead intake. Pub/Sub push, `gmail.read_thread`, `gmail.search`, and labels
+> are still pending. Tool permission is `billing`-only until the other
+> consumer agents ship (least privilege; the table below is the target
+> contract). Consent is one combined Google grant with Calendar — see
+> LENS-D-025: granted scopes are verified from the token response, and a
 > credential row never claims a scope its token lacks.
 
 ### Auth
 - **Method:** OAuth 2.0
-- **Scopes:** `gmail.readonly`, `gmail.send`, `gmail.modify` (for label management). Shipped so far: `gmail.send` only, requested in one combined consent with the Calendar read scope (LENS-D-025).
+- **Scopes:** `gmail.readonly`, `gmail.send`, `gmail.modify` (for label management). Shipped so far: `gmail.send` + `gmail.readonly` (LENS-023a), requested in one combined consent with the Calendar read scope (LENS-D-025).
 - **Token storage:** `integration_credentials` table, encrypted (see `SECURITY.md`)
 - **Refresh:** adapter handles automatically; refresh window = 5 min before expiry
 
@@ -65,7 +66,7 @@ When state diverges across a bidirectional integration, **ERP wins** (see `AGENT
 | `gmail.add_label` | `{message_id, label_name}` | `{ok}` | CommsAgent |
 
 ### Sync rules
-- **Inbound:** Gmail Push notifications via Pub/Sub → webhook → adapter parses → emits domain event (`gmail.message_received`).
+- **Inbound (MVP, per LENS-023 D1):** cron-driven polling of a rolling inbox window (`in:inbox newer_than:2d`), stateless — idempotency via the `lead.source_message_id` unique index, no sync cursor. Adapter parses → emits `gmail.message_received`. **Pub/Sub push is the deferred upgrade path**, unchanged pipeline behind it: Gmail Push via Pub/Sub → webhook → same parse/emit.
 - **Outbound:** Every `gmail.send` writes a `comm_log` row before the API call. If the API call fails, the row is marked `status='failed'` (no retries from app code — agent handles).
 - **Threading:** `comm_log.external_message_id` stores Gmail's `message_id`. Thread IDs are stored on the matching `client` or `lead` row to link conversations.
 

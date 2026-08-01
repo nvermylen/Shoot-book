@@ -91,6 +91,8 @@
 
 **Revisit Trigger:** Adding a third Google scope (e.g., `gmail.readonly` for lead intake) — same flow extends; or Google changes refresh-token rotation behavior, which breaks the dual-row duplication assumption.
 
+**Addendum (2026-07-07, LENS-023a):** the trigger fired — `gmail.readonly` added to the combined consent for lead intake. Guard semantics unchanged: the `gmail` row is still keyed on `gmail.send`; `readonly` is recorded in the row's verified `scope[]` and gates intake. Send-only grants keep the chase alive with intake off; readonly-only grants store no row (intake reports not-connected rather than a row whose primary capability is missing).
+
 ---
 
 ### LENS-D-024 — Payment-chase state derived from comm_log; no state table
