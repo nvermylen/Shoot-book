@@ -9,6 +9,7 @@ import {
   deletePayment,
   cancelInvoice,
 } from "@/lib/erp/invoice";
+import { setChasePaused } from "@/lib/erp/invoice/chase";
 import type { Invoice, Payment } from "@/types/erp";
 
 export interface ActionResult<T> {
@@ -121,6 +122,34 @@ export async function deletePaymentAction(
 
   revalidatePath("/payments");
   return { ok: true, data: result.data, warning: result.warning };
+}
+
+/** Pause/resume the payment chase for one invoice (pause intent only — LENS-D-027). */
+export async function setChasePausedAction(
+  invoiceId: string,
+  paused: boolean,
+): Promise<ActionResult<{ paused: boolean }>> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const parsed = idSchema.safeParse(invoiceId);
+  if (!parsed.success) return invalid(parsed.error);
+
+  const result = await setChasePaused(supabase, {
+    photographer_id: user.id,
+    invoice_id: parsed.data,
+    paused,
+  });
+  if (result.error) {
+    const msg =
+      result.error.code === "validation_error"
+        ? result.error.detail
+        : "Couldn’t update the chase. Try again.";
+    return { ok: false, error: msg };
+  }
+
+  revalidatePath("/payments");
+  return { ok: true, data: result.data };
 }
 
 export async function cancelInvoiceAction(

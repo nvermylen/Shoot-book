@@ -213,6 +213,7 @@ See `docs/architecture/INTEGRATION_REGISTRY.md` for full per-integration spec.
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Same | Secret |
 | `STRIPE_API_KEY` | `integrations/stripe/client.ts` | Secret (Phase 2) |
 | `STRIPE_WEBHOOK_SECRET` | `integrations/stripe/webhooks.ts` | Secret (Phase 2) |
+| `CRON_SECRET` | `api/cron/invoice-chase/route.ts` | Secret — bearer auth for Vercel Cron (LENS-022e); route fails closed if unset |
 
 **Rules:** `.env.local` never committed. No `NEXT_PUBLIC_` prefix on secrets. Service role key in `admin.ts` only.
 

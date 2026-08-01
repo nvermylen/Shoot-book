@@ -26,8 +26,12 @@ export interface MoneyRow {
   daysOverdue: number;
   /** Days until due (negative = past). */
   dueInDays: number;
-  /** Real count from comm_log — 0 reads "no chase yet" until LENS-022e runs. */
+  /** Real count from comm_log (LENS-D-024). */
   remindersSent: number;
+  /** Chase hit the overdue-send cap — "your turn", the one chase escalation signal (Rule 5). */
+  chaseEscalated: boolean;
+  /** Photographer paused this invoice's chase (LENS-D-027). */
+  chasePaused: boolean;
 }
 
 /**
@@ -47,6 +51,8 @@ export interface MoneyCardData {
   dueNext: MoneyRow[];
   /** Upcoming bookings with no invoice — the cutover-assist seed when hasInvoices=false. */
   uninvoicedCount: number;
+  /** Open invoices exist but Gmail isn't connected — the chase is NOT sending (LENS-022e, Rule 5). */
+  chaseSendingBroken: boolean;
 }
 
 function dollars(cents: number): string {
@@ -247,9 +253,17 @@ export default function MissionControl({
                           <div className="meta" style={{ fontSize: 10.5, marginTop: 1 }}>
                             {r.routedToParentName ? `→ ${r.routedToParentName} (parent)` : "→ client"}
                             {" · "}
-                            {r.remindersSent === 0
-                              ? "no chase yet"
-                              : `${r.remindersSent} reminder${r.remindersSent === 1 ? "" : "s"} sent`}
+                            {r.chaseEscalated ? (
+                              <span style={{ color: "var(--warn)", fontWeight: 600 }}>
+                                your turn — chase stopped after {r.remindersSent} notes
+                              </span>
+                            ) : r.chasePaused ? (
+                              "chase paused"
+                            ) : r.remindersSent === 0 ? (
+                              "no reminders yet"
+                            ) : (
+                              `${r.remindersSent} reminder${r.remindersSent === 1 ? "" : "s"} sent`
+                            )}
                           </div>
                         </div>
                         <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -315,9 +329,17 @@ export default function MissionControl({
                           <div className="meta" style={{ fontSize: 10.5, marginTop: 1 }}>
                             {r.routedToParentName ? `→ ${r.routedToParentName} (parent)` : "→ client"}
                             {" · "}
-                            {r.remindersSent === 0
-                              ? "no chase yet"
-                              : `${r.remindersSent} reminder${r.remindersSent === 1 ? "" : "s"} sent`}
+                            {r.chaseEscalated ? (
+                              <span style={{ color: "var(--warn)", fontWeight: 600 }}>
+                                your turn — chase stopped after {r.remindersSent} notes
+                              </span>
+                            ) : r.chasePaused ? (
+                              "chase paused"
+                            ) : r.remindersSent === 0 ? (
+                              "no reminders yet"
+                            ) : (
+                              `${r.remindersSent} reminder${r.remindersSent === 1 ? "" : "s"} sent`
+                            )}
                           </div>
                         </div>
                         <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -342,6 +364,28 @@ export default function MissionControl({
                   )}
                 </div>
               </div>
+              {money.chaseSendingBroken && (
+                <div
+                  data-testid="money-chase-broken"
+                  style={{
+                    padding: "10px 20px",
+                    borderTop: "1px solid var(--rule)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <span className="meta" style={{ color: "var(--warn)" }}>
+                    Chase paused — Google isn&apos;t connected for sending, so no
+                    payment reminders are going out.
+                  </span>
+                  {/* Full navigation — the connect route 307s to Google */}
+                  <a className="btn sm" href="/api/integrations/google/connect" data-testid="money-reconnect-google">
+                    Reconnect →
+                  </a>
+                </div>
+              )}
             </div>
           )}
         </Section>

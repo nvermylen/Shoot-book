@@ -300,7 +300,9 @@ A series of templated messages tied to a trigger (booking created, session appro
 - `id, photographer_id, name, trigger_event, steps (jsonb), is_active`
 
 `comm_sequence_state`:
-- `id, sequence_id, client_id, booking_id, current_step, last_sent_at, status ('active' | 'paused' | 'completed' | 'cancelled')`
+- `id, sequence_id, client_id, booking_id, invoice_id (uuid FK → invoice, nullable — per-invoice chase pause intent, migration_006 / LENS-D-027; unique when set), current_step, last_sent_at, status ('active' | 'paused' | 'completed' | 'cancelled')`
+
+**Note (LENS-D-024):** for the payment chase this table stores pause/cancel *intent* only — chase history and idempotency derive from `comm_log.invoice_id`, never from state rows.
 
 **RLS:** photographer-scoped.
 

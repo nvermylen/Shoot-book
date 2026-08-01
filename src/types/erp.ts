@@ -250,6 +250,8 @@ export interface CommSequenceState {
   sequence_id: string;
   client_id: string;
   booking_id: string | null;
+  /** Per-invoice pause intent for the payment chase (migration_006, LENS-D-027). */
+  invoice_id: string | null;
   current_step: number;
   last_sent_at: string | null;
   status: CommSequenceStateStatus;
