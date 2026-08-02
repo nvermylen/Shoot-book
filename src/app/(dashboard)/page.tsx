@@ -53,6 +53,7 @@ export default async function MissionControlPage() {
   let upcomingShoots: UpcomingShoot[] | null = null;
   let shootsThisWeek: number | null = null;
   let unmatchedCount = 0;
+  let syncFailureCount = 0;
   let syncFailed = false;
 
   if (calendarConnected) {
@@ -69,7 +70,18 @@ export default async function MissionControlPage() {
         timeMax: timeMax.toISOString(),
       });
       if (sync.error) syncFailed = true;
-      else unmatchedCount = sync.data.unmatched.length;
+      else {
+        unmatchedCount = sync.data.unmatched.length;
+        // Per-event insert failures are real missing rows on the sweep —
+        // loud, never swallowed (how the migration_004 gap stayed invisible).
+        syncFailureCount = sync.data.failures.length;
+        if (syncFailureCount > 0) {
+          console.error("dashboard.calendar_sync.event_failures", {
+            count: syncFailureCount,
+            details: sync.data.failures.map((f) => f.detail),
+          });
+        }
+      }
 
       const bookings = await listUpcomingBookings(supabase, {
         from: now.toISOString(),
@@ -218,6 +230,7 @@ export default async function MissionControlPage() {
       upcomingShoots={upcomingShoots}
       calendarConnected={calendarConnected}
       unmatchedCount={unmatchedCount}
+      syncFailureCount={syncFailureCount}
       syncFailed={syncFailed}
       money={money}
       inquiries={inquiries}

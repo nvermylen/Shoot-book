@@ -136,6 +136,7 @@ export default function MissionControl({
   upcomingShoots,
   calendarConnected,
   unmatchedCount = 0,
+  syncFailureCount = 0,
   syncFailed = false,
   money,
   inquiries,
@@ -146,6 +147,8 @@ export default function MissionControl({
   calendarConnected: boolean;
   /** Calendar events that couldn't be matched to a client — surfaced, never dropped (Rule 4). */
   unmatchedCount?: number;
+  /** Matched events whose booking write failed this sync — missing rows, loud (Rule 4). */
+  syncFailureCount?: number;
   /** Sync failed this load — bookings shown are last-synced, flagged as such. */
   syncFailed?: boolean;
   /** "Who owes / what's late" (LENS-022c). null = read failed — explicit failed state, never fake zeros. */
@@ -473,6 +476,12 @@ export default function MissionControl({
           {calendarConnected && syncFailed && (
             <div className="meta" data-testid="whos-next-sync-failed" style={{ marginTop: 10, color: "var(--warn)" }}>
               Calendar sync failed this time — showing last synced shoots.
+            </div>
+          )}
+          {calendarConnected && syncFailureCount > 0 && (
+            <div className="meta" data-testid="whos-next-write-failures" style={{ marginTop: 10, color: "var(--warn)" }}>
+              {syncFailureCount} calendar event{syncFailureCount === 1 ? "" : "s"}
+              {" couldn't be saved as bookings this sync — the list above may be missing shoots."}
             </div>
           )}
           {calendarConnected && !syncFailed && unmatchedCount > 0 && (
