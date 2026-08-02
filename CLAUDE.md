@@ -83,13 +83,13 @@ If a Claude Code question can be answered by these files, the answer is in those
 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
-Current sprint:      Sprint 3 — LENS-023 COMPLETE (a/b/c merged #42/#43/#44). Phase 1 loop code-complete: inquiry → lead → qualification → inquiries surface → booking → invoice → chase. Intake inert until gmail.readonly granted on an account.
-Last ticket:         LENS-CLEANUP-009 MERGED #45 (chrome renders real photographer profile via new erp/photographer + server DashboardLayout/DashboardShell; nine unbuilt pages show honest ComingSoon; mission-control mock sections removed pending LENS-020; src/lib/mock/data.ts DELETED — LENS-D-030). Before that: LENS-023c MERGED #44 (inquiries page real; CRON_SECRET live; migration_006 applied prod+test; gmail.readonly on GCC consent screen).
-Next ticket:         None kicked off — next is acceptance + cutover prep, then Phase 1 wrap or next spec. PENDING OWNER ACTIONS: (1) apply migration_007 to prod + test — thread_id write degrades to reported error until then; (2) reconnect Google on prod test account — all three consent boxes (intake activates only then), calendar sync unchanged, gmail scope[] includes readonly; (3) E2E chase + intake acceptance per specs (chase: real send on test account; intake: double-run zero dupes, new-sender/client-reply/spam triage, inquiries page count reconciles with lead rows exactly). Before Morgan sees the sweep: seed prod test account invoice book + hand-reconcile (accuracy release gate).
+Current sprint:      Sprint 3 close-out — Phase 1 loop code-complete + acceptance runbook merged. Acceptance execution is OWNER work per the runbook; no code ticket in flight.
+Last ticket:         LENS-024 MERGED #46 (docs-only: docs/features/Phase1/LENS-024_phase1-acceptance-cutover.md — ordered owner preconditions, UI-seeded invoice book + reconciliation SQL, chase E2E, intake triage matrix, sign-off table, Morgan day-1 cutover checklist). Before that: LENS-CLEANUP-009 #45 (mock deleted, chrome renders real profile — LENS-D-030), LENS-023c #44.
+Next ticket:         None kicked off — owner executes the LENS-024 runbook (password reset on test account; 401 dummy clients are soft-deleted — runbook seeds 6 fresh via CSV import; apply migration_007; three-box Google reconnect; Parts A–D sign-off). After sign-off: Morgan cutover, then Phase 1 wrap or next spec (candidates: derived mission-control sections per LENS-020 TODO, CommsAgent replies, Phase 2 Billing/Stripe).
 Last migration:      migration_007_lead_thread_id.sql (in repo via #43 — NOT YET APPLIED. migration_006 applied to prod + test 2026-08-01 per owner; migration_005 applied 2026-07-07)
 Next migration:      migration_008 (none planned — 023c is UI-only)
-Last PR branch:      LENS-CLEANUP-009-retire-mock-data (merged as #45)
-Active feature spec: docs/features/Phase1/LENS-023_gmail-lead-intake.md (LENS-022 spec: docs/features/Phase1/LENS-022_who-owes-invoices.md)
+Last PR branch:      LENS-024-phase1-acceptance (merged as #46)
+Active feature spec: docs/features/Phase1/LENS-024_phase1-acceptance-cutover.md (runbook; feature specs 020–023 all shipped)
 ```
 
 ---
