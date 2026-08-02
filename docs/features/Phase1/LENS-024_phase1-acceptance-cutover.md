@@ -18,12 +18,31 @@ Two release gates, verbatim from the specs, both P0 (HABIT_DESIGN Rule 4):
   right ones become leads; revoke `gmail.readonly` → paused state surfaces within
   one cron cycle; inquiries page count reconciles with `lead` rows **exactly**.
 
-## Test-account state (read before starting)
+## Test-account state (verified against prod 2026-08-02 — read before starting)
 
-The prod test-photographer account is **not** in the state the LENS-022 spec
-assumed. As of 2026-08-02: the 401 imported dummy clients are **soft-deleted**
-and the previously stored password **no longer authenticates**. The runbook
-below creates a small fresh client set instead; nothing here depends on the 401.
+Preflight found the environment materially different from what the build state
+claimed. Verified directly against both Supabase projects:
+
+- **Prod (`vvcuennzifsovbbylolx`) is missing migrations 005, 006, and 007.**
+  There is no `invoice` or `payment` table, no `comm_sequence_state.invoice_id`,
+  no `lead.thread_id`. The entire money surface (LENS-022) and intake thread
+  linkage (LENS-023) have **never had schema behind them in prod** — the
+  deployed app's money card has been rendering its failed/cutover state since
+  022c shipped, and the chase cron no-ops. The earlier "applied to prod" notes
+  were wrong (most likely applied to the test project's dashboard by mistake).
+- **The test project (`eqqfukokwtwqwcqqeneo`) already has all migrations
+  through 007.** It holds no data.
+- **Two prod accounts exist.** `nathan.vermylen@yahoo.com` ("Morgan Vermylen
+  Photography") is the original test login — its 401 imported dummy clients are
+  all soft-deleted and its Google credential is the old single-scope
+  `calendar.readonly` row. `nathan.vermylen@gmail.com` ("Nate") is a fresh
+  account and is **the acceptance target** for this runbook. It has no Google
+  connection yet.
+- **A.1 is done:** 6 acceptance clients were CSV-imported into the gmail
+  account on 2026-08-02 (C1 = the yahoo address, so client-reply intake tests
+  can be sent from a real distinct mailbox; C2–C6 = `+`-alias gmail addresses,
+  so chase mail lands in the owner's own inbox). Parent contacts on C2/C4 still
+  need adding through the client drawer.
 
 ---
 
@@ -31,15 +50,20 @@ below creates a small fresh client set instead; nothing here depends on the 401.
 
 | # | Action | Where | Verify |
 |---|--------|-------|--------|
-| 0.1 | Restore login to the test account (password reset) | Supabase dashboard → Auth → user → reset password | You can log in at shoot-book.vercel.app |
-| 0.2 | Apply `migration_007_lead_thread_id.sql` to **prod and test** projects | Supabase SQL editor (never via CC) | Query A below returns one row on each project |
-| 0.3 | Reconnect Google on the test account — **all three consent boxes** (calendar, gmail.send, gmail.readonly) | Dashboard → any Connect/Reconnect Google button | "Who's next" still syncs; inquiries card shows watching-state, not connect-state |
-| 0.4 | Update CC memory/build state if 0.1 changed credentials handling | — | — |
+| 0.1 | ~~Restore login~~ **DONE** — acceptance runs as `nathan.vermylen@gmail.com` | — | Login verified 2026-08-02 |
+| 0.2 | Apply **`migration_005`, then `006`, then `007` — in order — to PROD** (`vvcuennzifsovbbylolx`). Double-check the project ref in the dashboard URL before running: the test project already has all three, and applying to the wrong project is exactly how this gap happened | Supabase SQL editor (never via CC) | Query A below returns three rows on prod |
+| 0.3 | Connect Google on the gmail account — **all three consent boxes** (calendar, gmail.send, gmail.readonly) | Dashboard → any Connect Google button | "Who's next" syncs; inquiries card shows watching-state, not connect-state |
+| 0.4 | Update CC build state after 0.2 (migration claims corrected there 2026-08-02) | — | — |
 
-**Query A — migration_007 applied?**
+**Query A — prod schema complete? (expect 3 rows)**
 ```sql
-select column_name from information_schema.columns
-where table_name = 'lead' and column_name = 'thread_id';
+select 'migration_005' as m from information_schema.tables where table_name = 'invoice'
+union all
+select 'migration_006' from information_schema.columns
+  where table_name = 'comm_sequence_state' and column_name = 'invoice_id'
+union all
+select 'migration_007' from information_schema.columns
+  where table_name = 'lead' and column_name = 'thread_id';
 ```
 
 After 0.3, confirm granted scopes took (intake activates only on `gmail.readonly`):
@@ -54,27 +78,20 @@ inbox"), not the connect or capture-off state.
 > verification only. Run verification queries in the Supabase SQL editor,
 > substituting the test account's photographer id for `:pid`.
 
-**A.1 — Create clients** (the 401 are soft-deleted; there is **no create-client
-UI** — clients enter via the LENS-018 CSV import). Build a 6-row CSV in the
-Session export format and import it:
+**A.1 — Create clients: DONE 2026-08-02** (CSV import, 6 created, 0 errors —
+there is no create-client UI). Remaining from this step: add parent contact to
+C2 and C4 **through the client drawer** (LENS-020 edit path — doubles as its
+acceptance touch). Suggested parent addresses: `+c2parent` / `+c4parent`
+aliases.
 
-```
-npx tsx scripts/import-session-clients.ts <csv-path>            # dry-run first
-npx tsx scripts/import-session-clients.ts <csv-path> --commit
-```
-
-Use addresses you control for C1–C3 (they receive real chase/intake email in
-Parts B–C). Then add parent contact to C2 and C4 **through the client drawer**
-(LENS-020 edit path — this doubles as its acceptance touch):
-
-| Client | Parent contact | Purpose |
-|--------|---------------|---------|
-| C1 | none | overdue invoice, client-routed chase |
-| C2 | parent on file (drawer edit) | overdue invoice, **parent-routed** chase |
-| C3 | none | due-soon invoice |
-| C4 | parent on file (drawer edit) | partial payment |
-| C5 | none | fully paid invoice |
-| C6 | none | booked, **no invoice** (cutover-assist row) |
+| Client | Email | Parent contact | Purpose |
+|--------|-------|---------------|---------|
+| C1 Riley Sanchez | nathan.vermylen@yahoo.com | none | overdue invoice, client-routed chase |
+| C2 Emma Walsh | +c2 alias | parent on file (drawer edit) | overdue invoice, **parent-routed** chase |
+| C3 Ava Chen | +c3 alias | none | due-soon invoice |
+| C4 Maya Patel | +c4 alias | parent on file (drawer edit) | partial payment |
+| C5 Jack Turner | +c5 alias | none | fully paid invoice |
+| C6 Lily Brooks | +c6 alias | none | booked, **no invoice** (cutover-assist row) |
 
 **A.2 — Enter invoices** via `/payments` (dates relative to the test day, in the
 account's timezone):
