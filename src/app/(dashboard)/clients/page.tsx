@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { listClients } from "@/lib/erp/client";
 import { ClientsTable } from "./clients-table";
+import { getPhotographer } from "@/lib/erp/photographer";
 
 export default async function ClientsPage() {
   const supabase = await createClient();
@@ -37,5 +38,6 @@ export default async function ClientsPage() {
     );
   }
 
-  return <ClientsTable clients={result.data} />;
+  const photographer = await getPhotographer(supabase);
+  return <ClientsTable clients={result.data} timezone={photographer.data?.timezone ?? "UTC"} />;
 }

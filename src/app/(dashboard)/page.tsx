@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { countClients } from "@/lib/erp/client";
+import { getPhotographer } from "@/lib/erp/photographer";
 import { countBookingsCreatedSince, listUpcomingBookings } from "@/lib/erp/booking";
 import {
   listInvoices,
@@ -44,6 +45,11 @@ function daysUntil(from: string, to: string): number {
 export default async function MissionControlPage() {
   const supabase = await createClient();
   const clientCount = await countClients(supabase);
+  // Session times render in the photographer's timezone, formatted server-side
+  // (hydration-stable, never the viewer's local time). UTC only if the profile
+  // read fails — honest, not guessed.
+  const photographer = await getPhotographer(supabase);
+  const tz = photographer.data?.timezone ?? "UTC";
   const calendarStatus = await isServiceConnected(supabase, "calendar");
   const calendarConnected = calendarStatus.error ? false : calendarStatus.data;
 
@@ -93,14 +99,23 @@ export default async function MissionControlPage() {
           (b) => b.session_date && new Date(b.session_date).getTime() <= weekCutoff,
         ).length;
 
-        upcomingShoots = bookings.data.slice(0, SHOOTS_SHOWN).map((b) => ({
-          id: b.id,
-          clientName: b.client?.display_name ?? "Unknown client",
-          sessionDate: b.session_date ?? "",
+        upcomingShoots = bookings.data.slice(0, SHOOTS_SHOWN).map((b) => {
           // Calendar sync stores no duration for all-day events (LENS-021c).
-          allDay: b.duration_minutes === null,
-          locations: [], // booking_location isn't populated by calendar sync
-        }));
+          const allDay = b.duration_minutes === null;
+          const d = b.session_date ? new Date(b.session_date) : null;
+          return {
+            id: b.id,
+            clientName: b.client?.display_name ?? "Unknown client",
+            dayLabel: d
+              ? d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: tz })
+              : "",
+            timeLabel: d && !allDay
+              ? d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz })
+              : null,
+            allDay,
+            locations: [], // booking_location isn't populated by calendar sync
+          };
+        });
       }
       // bookings.error → upcomingShoots stays null → honest "syncing…" state
     }

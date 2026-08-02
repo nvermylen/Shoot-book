@@ -15,8 +15,9 @@ const SOURCE_LABELS: Record<string, string> = {
   imported: "Imported",
 };
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, timeZone: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
+    timeZone,
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -26,10 +27,12 @@ function formatDate(iso: string): string {
 export function ClientDrawer({
   client,
   open,
+  timezone,
   onClose,
 }: {
   client: Client | null;
   open: boolean;
+  timezone: string;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("overview");
@@ -60,7 +63,7 @@ export function ClientDrawer({
                   <Avatar name={current.display_name} size={44} />
                   <div>
                     <div className="eyebrow" style={{ marginBottom: 4 }}>
-                      {SOURCE_LABELS[current.source] ?? current.source} · added {formatDate(current.created_at)}
+                      {SOURCE_LABELS[current.source] ?? current.source} · added {formatDate(current.created_at, timezone)}
                     </div>
                     <div className="display" style={{ fontSize: 22, fontWeight: 500 }}>
                       {current.display_name}

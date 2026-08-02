@@ -91,19 +91,13 @@ export interface UpcomingShoot {
   /** booking id */
   id: string;
   clientName: string;
-  /** ISO date/datetime of the session. */
-  sessionDate: string;
+  /** Preformatted in the photographer's timezone server-side — identical on
+   *  server and client (hydration), and never the viewer's local time. */
+  dayLabel: string;
+  timeLabel: string | null;
   /** true when the source event had no time (all-day). */
   allDay: boolean;
   locations: string[];
-}
-
-function formatShootWhen(sessionDate: string, allDay: boolean): { day: string; time: string | null } {
-  const d = new Date(sessionDate);
-  const day = d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-  if (allDay) return { day, time: null };
-  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  return { day, time };
 }
 
 function formatKpiValue(
@@ -445,7 +439,6 @@ export default function MissionControl({
           ) : (
             <div data-testid="whos-next-list" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               {upcomingShoots.map((s) => {
-                const when = formatShootWhen(s.sessionDate, s.allDay);
                 return (
                   <div
                     key={s.id}
@@ -457,7 +450,7 @@ export default function MissionControl({
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
                       <div>
                         <div className="eyebrow" style={{ marginBottom: 4 }}>
-                          {when.day}{when.time ? ` · ${when.time}` : ""}
+                          {s.dayLabel}{s.timeLabel ? ` · ${s.timeLabel}` : ""}
                         </div>
                         <div className="display" style={{ fontSize: 22, fontWeight: 500 }}>{s.clientName}</div>
                       </div>
