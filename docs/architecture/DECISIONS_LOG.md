@@ -13,6 +13,30 @@
 
 ---
 
+### LENS-D-031 — Intake fails closed without the gateway; the photographer's own mail is never a lead
+**Date:** 2026-08-02
+**Phase:** Phase 1 | Sprint 3 close-out (LENS-024c/d, PRs #49–#51)
+**Status:** ✅ Active
+
+**Decision:** Two refinements to D-029's candidate filter, both from live-fire acceptance on prod. (1) Messages carrying Gmail's `SENT` label are skipped (`self_sender`, counted) — the chase's own reminders loop back into the inbox via client aliases and were becoming leads. (2) When the gateway is unconfigured (`isGatewayConfigured()` false — no `ANTHROPIC_API_KEY`), `runGmailLeadIntakeAll` returns `agent_unavailable` with **zero work done**. A thrown (vs returned) agent error is additionally caught per message so one failure never kills the batch or 500s the route.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Fail closed, zero work (chosen) | No lead rows the model never judged; Gmail keeps the mail; first run after the key exists judges everything normally | Inquiries wait until the key is configured — visible via `agent_unavailable`, never silent |
+| Create leads, qualify later | Speed-to-lead preserved | No requalification path exists — rows stick as 'new' forever; 24 junk leads (GitHub notifications, promos, personal mail) landed on the sweep in under an hour of prod runtime |
+| Roll back (delete) the lead on gateway failure | Clean surface | Soft-delete keeps the message-id in the dedup set → a REAL inquiry arriving during an outage is permanently lost — the one failure Gmail never has |
+
+**Rationale:** Rule 4 both ways: a fabricated/unjudged inquiry on the sweep and a silently dropped one are each disqualifying. Fail-closed loses nothing (mail persists upstream) and fabricates nothing.
+
+**Implications:**
+- The 29 unjudged artifact rows created during the outage window were hard-deleted (no comm_log/thread/event references existed — all such writes happen only after a successful outcome), so their messages re-enter and get judged once the key lands.
+- `isGatewayConfigured()` lives in the gateway (sole owner of `ANTHROPIC_API_KEY`); eval mode counts as configured.
+
+**Revisit Trigger:** A requalification path for 'new' leads ships (then create-first may beat fail-closed on speed-to-lead); or intake gains a non-model qualification fallback.
+
+---
+
 ### LENS-D-030 — Real accounts never see demo data; unbuilt pages say "not built yet"
 **Date:** 2026-08-01
 **Phase:** Phase 1 | Sprint 3 (LENS-CLEANUP-009)
@@ -854,6 +878,7 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-031 | Intake fails closed without the gateway; SENT mail never a lead | 2026-08-02 | Architecture | ✅ Active |
 | LENS-D-030 | Real accounts never see demo data; chrome renders the profile row; mock deleted | 2026-08-01 | UX | ✅ Active |
 | LENS-D-029 | Lead candidates: thread-starters from unknown senders; deterministic filter | 2026-08-01 | Architecture | ✅ Active |
 | LENS-D-028 | Gmail intake polls on cron, stateless (no cursor); Pub/Sub deferred | 2026-08-01 | Architecture | ✅ Active |

@@ -201,18 +201,33 @@ where photographer_id = :pid and qualification_status = 'new' and deleted_at is 
 
 | Gate | Check | Pass |
 |------|-------|------|
-| LENS-022 | A.3 four-way reconciliation exact | ☐ |
-| LENS-022 | A.4 one-refresh flip | ☐ |
-| LENS-022 | A.5 local-midnight rollover | ☐ |
-| LENS-022 | B.2 real sends, parent-routed correctly | ☐ |
-| LENS-022 | B.3 double-run sends nothing | ☐ |
-| LENS-022 | B.4 per-invoice pause honored | ☐ |
-| LENS-023 | C.1 triage matrix exact | ☐ |
-| LENS-023 | C.3 double-run zero dupes (Query D empty) | ☐ |
-| LENS-023 | C.4 counts reconcile exactly (Query E) | ☐ |
-| LENS-023 | C.5 revoke → paused within one cycle | ☐ |
+| LENS-022 | A.3 four-way reconciliation exact | ✅ 2026-08-02 — KPI = card = payments = SQL, $1,650 / $1,050 to the cent; parent routing verified on I2/I4 |
+| LENS-022 | A.4 one-refresh flip | ✅ 2026-08-02 — $400 on I1 → one navigation: KPI $1,250, Riley gone from what's-late |
+| LENS-022 | A.5 local-midnight rollover | ✅ by derivation — days_overdue computed via localDateString(photographer tz); I1 showed exactly 10d late for a 07-23 due date on 08-02 CT |
+| LENS-022 | B.2 real sends, parent-routed correctly | ✅ 2026-08-02 — 3 real Gmail sends: Ava→client, Emma/Maya→parent addresses, greeting names correct, Maya asked for the $300 balance not the $500 face |
+| LENS-022 | B.3 double-run sends nothing | ✅ 2026-08-02 — immediate rerun: sent 0, skipped already_sent_today: 3 |
+| LENS-022 | B.4 per-invoice pause honored | ✅ 2026-08-02 — UI pause on I2 → run skipped {paused: 1}, others unaffected; unpaused after |
+| LENS-023 | C.1 triage matrix exact | ☐ BLOCKED — ANTHROPIC_API_KEY missing in Vercel prod (intake fails closed, #50) |
+| LENS-023 | C.3 double-run zero dupes (Query D empty) | ☐ BLOCKED — same |
+| LENS-023 | C.4 counts reconcile exactly (Query E) | ☐ BLOCKED — same |
+| LENS-023 | C.5 revoke → paused within one cycle | ☐ BLOCKED — same |
 
-All boxes checked → Phase 1 is accepted and the sweep may be shown to Morgan.
+**Method note (B):** the chase's 8–10am-local send window was crossed for testing
+by briefly setting the photographer's timezone to Pacific/Pago_Pago (restored to
+America/Chicago immediately after). All entry (clients import aside) went through
+the real prod UI via Playwright — parent contacts in the drawer, invoices and
+payments in /payments, pause toggle on the table.
+
+**Found and fixed during execution:** #48 booking→invoice embed ambiguity
+(payments page hard-failed on full schema), #49 intake self-mail + thrown-agent
+isolation, #50 intake fails closed without the gateway key, #51 fail-closed state
+surfaced in cron response, #52 sync write-failures surfaced on the sweep, #53
+Booked-last-30d KPI real, #54 hydration/timezone correctness on / and /clients.
+Full-13-route sweep clean 2026-08-02 (zero console errors, zero failed states).
+
+LENS-022 gates: **all green**. LENS-023 gates: blocked on the key, then C.1–C.5
+per Part C above. B.6 (disconnect degradation) deferred — needs an owner
+re-consent afterward; the chaseSendingBroken path is unit-covered.
 
 ---
 
