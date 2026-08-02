@@ -259,6 +259,7 @@ describe('getMessage', () => {
       subject: 'Senior photos for Emma?',
       bodyText: 'Hi! Do you have August availability?',
       receivedAt: new Date(1783300000000).toISOString(),
+      labelIds: [],
     });
   });
 

@@ -220,6 +220,7 @@ const messageResponseSchema = z.object({
   id: z.string().min(1),
   threadId: z.string().min(1),
   internalDate: z.string().optional(),
+  labelIds: z.array(z.string()).optional(),
   payload: z
     .object({
       mimeType: z.string().optional(),
@@ -246,6 +247,8 @@ export interface InboundMessage {
   bodyText: string;
   /** ISO 8601, from Gmail's internalDate. */
   receivedAt: string;
+  /** Gmail system/user labels (e.g. SENT marks mail this account sent). */
+  labelIds: string[];
 }
 
 // RFC 2047 encoded-word decoding — inbound subjects and display names arrive
@@ -414,6 +417,7 @@ export async function getMessage(
       receivedAt: msg.internalDate
         ? new Date(Number(msg.internalDate)).toISOString()
         : new Date().toISOString(),
+      labelIds: msg.labelIds ?? [],
     },
     error: null,
   };

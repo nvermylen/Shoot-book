@@ -147,6 +147,13 @@ export async function runGmailLeadIntake(
     }
     const msg = fetched.data;
 
+    // Mail this account itself sent (Gmail SENT label — catches the chase's
+    // reminders looping back via aliases, and any send-as address). The
+    // photographer is never their own lead.
+    if (msg.labelIds.includes('SENT')) {
+      skip('self_sender');
+      continue;
+    }
     // D3 candidate filter: replies belong to conversations, not intake…
     if (!msg.isThreadStart) {
       skip('reply_not_thread_start');
@@ -166,15 +173,26 @@ export async function runGmailLeadIntake(
       .join('\n\n')
       .slice(0, INTENT_SUMMARY_MAX_CHARS);
 
-    const outcome = await runLeadAgent(supabase, {
-      source_message_id: msg.messageId,
-      photographer_id: photographerId,
-      display_name: msg.fromName ?? msg.fromEmail,
-      email: msg.fromEmail,
-      source: 'gmail_inbound',
-      intent_summary: intentSummary,
-      received_at: msg.receivedAt,
-    });
+    // A thrown exception (gateway misconfiguration, SDK failure) must stay a
+    // per-message error, not kill the batch — the route 500s otherwise and
+    // every later message in the window goes unprocessed.
+    let outcome: Awaited<ReturnType<typeof runLeadAgent>>;
+    try {
+      outcome = await runLeadAgent(supabase, {
+        source_message_id: msg.messageId,
+        photographer_id: photographerId,
+        display_name: msg.fromName ?? msg.fromEmail,
+        email: msg.fromEmail,
+        source: 'gmail_inbound',
+        intent_summary: intentSummary,
+        received_at: msg.receivedAt,
+      });
+    } catch (err) {
+      report.errors.push(
+        `message ${msg.messageId}: lead agent threw: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      continue;
+    }
     if (outcome.error) {
       // Race window: another run ingested this message between our set-build
       // and now. The agent's own dedup catches it — a duplicate, not a failure.
