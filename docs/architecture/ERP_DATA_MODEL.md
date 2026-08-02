@@ -89,6 +89,8 @@ A potential client — pre-conversion. A `lead` becomes a `client` when qualifie
 - `email` (text)
 - `phone` (text, nullable)
 - `source` (text — 'web_form' | 'gmail_inbound' | 'referral' | 'social' | 'other')
+- `source_message_id` (text, nullable — origin message id; partial unique on (photographer_id, source_message_id), migration_003 — intake idempotency)
+- `thread_id` (text, nullable — Gmail thread for gmail_inbound leads, migration_007 / LENS-023b; how CommsAgent joins the conversation later)
 - `intent_summary` (text — what they asked for, in plain language)
 - `qualification_status` (text — 'new' | 'qualified' | 'disqualified' | 'converted')
 - `qualification_notes` (text)

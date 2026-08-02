@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/invoice-chase",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/gmail-lead-intake",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

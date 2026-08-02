@@ -79,6 +79,7 @@ const qualifiedLead: Lead = {
   phone: null,
   source: 'web_form',
   source_message_id: 'msg-001',
+  thread_id: null,
   intent_summary: 'Senior portraits for my daughter',
   qualification_status: 'qualified',
   qualification_notes: 'Clear senior portrait request',
