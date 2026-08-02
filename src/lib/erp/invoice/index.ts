@@ -567,7 +567,7 @@ export async function listUpcomingBookingsWithoutInvoice(
       `id, session_date, status,
        client:client_id (id, display_name, email, parent_name, parent_email),
        package:package_id (name, price_cents, deposit_cents),
-       invoice (id, deleted_at)`,
+       invoice!booking_id (id, deleted_at)`, // !booking_id: booking↔invoice has 3 FKs (booking_id, deposit/final_invoice_id) — unhinted embed is ambiguous
     )
     .is('deleted_at', null)
     .in('status', ['tentative', 'confirmed'])
