@@ -1,32 +1,31 @@
-"use client";
+import { createClient } from "@/lib/supabase/server";
+import { getPhotographer } from "@/lib/erp/photographer";
+import { DashboardShell, type PhotographerIdentity } from "@/components/dashboard-shell";
 
-import { useState } from "react";
-import { Sidebar } from "@/components/sidebar";
-import { TopBar } from "@/components/top-bar";
-import { ClientDrawer } from "@/components/client-drawer";
-import { DrawerContext } from "@/lib/drawer-context";
-import type { Client } from "@/types/erp";
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+  const { data: photographer, error } = await getPhotographer(supabase);
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerClient, setDrawerClient] = useState<Client | null>(null);
+  // Profile read failed (or the row is missing for a legacy account): fall
+  // back to the auth email so the chrome stays honest — never a made-up name.
+  let identity: PhotographerIdentity;
+  if (photographer) {
+    identity = {
+      displayName: photographer.display_name,
+      businessName: photographer.business_name,
+      timezone: photographer.timezone,
+    };
+  } else {
+    if (error) {
+      console.error("dashboard.layout.photographer_read_failed", { code: error.code });
+    }
+    const { data: userData } = await supabase.auth.getUser();
+    identity = {
+      displayName: userData.user?.email ?? "Signed in",
+      businessName: "",
+      timezone: "",
+    };
+  }
 
-  const openDrawer = (client?: Client) => {
-    setDrawerClient(client ?? null);
-    setDrawerOpen(true);
-  };
-  const closeDrawer = () => setDrawerOpen(false);
-
-  return (
-    <DrawerContext.Provider value={{ open: drawerOpen, client: drawerClient, openDrawer, closeDrawer }}>
-      <div style={{ display: "grid", gridTemplateColumns: "248px 1fr", minHeight: "100vh" }}>
-        <Sidebar />
-        <main style={{ minWidth: 0, background: "var(--paper)" }}>
-          <TopBar />
-          <div>{children}</div>
-        </main>
-        <ClientDrawer key={drawerClient?.id ?? "none"} client={drawerClient} open={drawerOpen} onClose={closeDrawer} />
-      </div>
-    </DrawerContext.Provider>
-  );
+  return <DashboardShell identity={identity}>{children}</DashboardShell>;
 }

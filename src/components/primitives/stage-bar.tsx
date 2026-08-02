@@ -1,6 +1,6 @@
 "use client";
 
-import { DATA } from "@/lib/mock/data";
+const DEFAULT_STAGES = ["Deposit Paid", "Style Guide", "Location", "Final Payment", "Gallery"];
 
 export function StageBar({
   idx = 0,
@@ -13,7 +13,7 @@ export function StageBar({
   showLabel?: boolean;
   compact?: boolean;
 }) {
-  const S = stages || DATA.stages;
+  const S = stages || DEFAULT_STAGES;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: compact ? 4 : 6, minWidth: compact ? 120 : 180 }}>
       <div style={{ display: "flex", gap: 3 }}>

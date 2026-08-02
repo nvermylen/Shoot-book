@@ -1,10 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Filter, ChevronRight, Check, MapPin } from "lucide-react";
-import { Pill, StageBar, Avatar, SessionDot, Section } from "@/components/primitives";
-import { useDrawer } from "@/lib/drawer-context";
-import { DATA } from "@/lib/mock/data";
+import { MapPin } from "lucide-react";
+import { Pill, Section } from "@/components/primitives";
 
 export interface DashboardKpis {
   activeClients: number | null;
@@ -155,14 +153,7 @@ export default function MissionControl({
   /** Fresh inquiries (LENS-023c). null = read failed — explicit failed state. */
   inquiries: InquiriesCardData | null;
 }) {
-  const mc = DATA.missionControl;
   const router = useRouter();
-  const { openDrawer } = useDrawer();
-
-  const sevPill = (s: "danger" | "warn") => {
-    if (s === "danger") return <Pill kind="danger" dot>Overdue</Pill>;
-    return <Pill kind="warn" dot>Needs nudge</Pill>;
-  };
 
   return (
     <div data-page="home">
@@ -413,115 +404,10 @@ export default function MissionControl({
           )}
         </Section>
 
-        {/* TODO: LENS-020 — Action Required needs bookings + payments data */}
-        <Section
-          eyebrow="Mission control"
-          title="Action required"
-          right={<button className="btn sm"><Filter size={12} /> All zones</button>}
-        >
-          <div className="card" style={{ overflow: "hidden" }}>
-            <div
-              style={{
-                display: "grid", gridTemplateColumns: "1fr 180px 220px 160px 40px",
-                padding: "10px 20px", borderBottom: "1px solid var(--rule)", background: "var(--paper-2)",
-              }}
-            >
-              <div className="eyebrow">Client</div>
-              <div className="eyebrow">Session</div>
-              <div className="eyebrow">Issue</div>
-              <div className="eyebrow">Stage</div>
-              <div />
-            </div>
-            {mc.actionRequired.map((r) => (
-              <div
-                key={r.id}
-                className="row-hover"
-                onClick={() => openDrawer()}
-                style={{
-                  display: "grid", gridTemplateColumns: "1fr 180px 220px 160px 40px",
-                  padding: "14px 20px", alignItems: "center",
-                  borderBottom: "1px solid var(--rule)", cursor: "pointer",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <Avatar name={r.client} color={r.sessionTypeColor} size={32} />
-                  <div>
-                    <div style={{ fontWeight: 500, color: "var(--ink)" }}>{r.client}</div>
-                    {r.parent && <div className="meta" style={{ fontSize: 10.5, marginTop: 2 }}>Mom: {r.parent}</div>}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <SessionDot color={r.sessionTypeColor} />
-                    <span style={{ fontSize: 13, color: "var(--ink-2)" }}>{r.sessionType}</span>
-                  </div>
-                  <div className="meta" style={{ marginTop: 3 }}>{r.date}</div>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {sevPill(r.severity)}
-                  <span style={{ fontSize: 12, color: "var(--ink-2)" }}>{r.issue}</span>
-                </div>
-                <StageBar idx={r.stageIdx} showLabel compact />
-                <ChevronRight size={14} />
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        {/* TODO: LENS-020 — On Track + Recently Completed need bookings data */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 28, marginBottom: 40 }}>
-          <Section
-            eyebrow="Coordinator"
-            title="On track"
-            right={<button className="btn ghost sm" onClick={() => router.push("/clients")}>See all {kpis.activeClients ?? "…"} →</button>}
-            style={{ marginBottom: 0 }}
-          >
-            <div className="card" style={{ padding: "4px 0" }}>
-              {mc.onTrack.map((r, i) => (
-                <div
-                  key={r.id}
-                  className="row-hover"
-                  onClick={() => openDrawer()}
-                  style={{
-                    display: "grid", gridTemplateColumns: "1fr 110px 160px 16px",
-                    padding: "12px 20px", alignItems: "center",
-                    borderBottom: i < mc.onTrack.length - 1 ? "1px solid var(--rule)" : "none",
-                    cursor: "pointer", gap: 16,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <SessionDot color={r.sessionTypeColor} />
-                    <span style={{ fontWeight: 500 }}>{r.client}</span>
-                  </div>
-                  <span className="meta">{r.date}</span>
-                  <StageBar idx={r.stageIdx} showLabel={false} compact />
-                  <ChevronRight size={12} />
-                </div>
-              ))}
-            </div>
-          </Section>
-
-          <Section eyebrow="Last 14 days" title="Recently wrapped" style={{ marginBottom: 0 }}>
-            <div className="card" style={{ padding: "4px 0" }}>
-              {mc.recentlyCompleted.map((r, i) => (
-                <div
-                  key={r.id}
-                  className="row-hover"
-                  style={{ padding: "12px 20px", borderBottom: i < mc.recentlyCompleted.length - 1 ? "1px solid var(--rule)" : "none" }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontWeight: 500 }}>{r.client}</span>
-                    <span className="meta">{r.date}</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, color: "var(--success)" }}>
-                    <Check size={12} />
-                    <span style={{ fontSize: 12 }}>{r.note}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Section>
-        </div>
+        {/* TODO: LENS-020 — "Action required", "On track", and "Recently
+            wrapped" return here once bookings + payments can derive them.
+            Their mock-data versions were removed (LENS-CLEANUP-009): a real
+            account must never see fabricated clients on the sweep (Rule 4). */}
 
         {/* Who's next — real calendar-synced shoots (LENS-021d). Rule 4: honest
             connect / syncing / empty states, never a fabricated row. No payment
