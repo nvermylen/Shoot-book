@@ -38,7 +38,7 @@ export function DashboardShell({
           <TopBar identity={identity} />
           <div>{children}</div>
         </main>
-        <ClientDrawer key={drawerClient?.id ?? "none"} client={drawerClient} open={drawerOpen} onClose={closeDrawer} />
+        <ClientDrawer key={drawerClient?.id ?? "none"} client={drawerClient} open={drawerOpen} timezone={identity.timezone} onClose={closeDrawer} />
       </div>
     </DrawerContext.Provider>
   );

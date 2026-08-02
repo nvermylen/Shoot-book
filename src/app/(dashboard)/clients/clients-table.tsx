@@ -13,12 +13,14 @@ const SOURCE_LABELS: Record<string, string> = {
   imported: "Imported",
 };
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, timeZone: string): string {
+  // Pinned zone: server and client must render identical text (hydration),
+  // and dates belong to the photographer's day, not the viewer's.
   const d = new Date(iso);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone });
 }
 
-export function ClientsTable({ clients }: { clients: Client[] }) {
+export function ClientsTable({ clients, timezone }: { clients: Client[]; timezone: string }) {
   const [search, setSearch] = useState("");
   const { openDrawer } = useDrawer();
 
@@ -169,7 +171,7 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
                   {SOURCE_LABELS[client.source] ?? client.source}
                 </Pill>
                 <span style={{ fontSize: 13, color: "var(--ink-2)" }}>
-                  {formatDate(client.created_at)}
+                  {formatDate(client.created_at, timezone)}
                 </span>
                 <ChevronRight size={12} />
               </div>
