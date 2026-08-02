@@ -13,6 +13,31 @@
 
 ---
 
+### LENS-D-030 — Real accounts never see demo data; unbuilt pages say "not built yet"
+**Date:** 2026-08-01
+**Phase:** Phase 1 | Sprint 3 (LENS-CLEANUP-009)
+**Status:** ✅ Active
+
+**Decision:** The dashboard chrome renders the signed-in photographer's own profile row — `display_name` in the sidebar footer and top-bar avatar, `business_name` under the brand, timezone abbreviated via `Intl`. If the profile read fails (or a legacy account has no row), the chrome falls back to the auth email and the failure is logged (`dashboard.layout.photographer_read_failed`) — never a made-up name. Every remaining mock-data surface is gone: the nine unbuilt pages (calendar, journey, notes, locations, shoot-day, automations, finances, galleries, expenses) render an explicit "Not built yet" placeholder (`ComingSoon`), mission-control's three fabricated sections (Action required / On track / Recently wrapped) are removed until LENS-020 can derive them from real bookings + payments, hardcoded sidebar nav counts and the fake sunset time are dropped, and `src/lib/mock/data.ts` is deleted.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Honest "not built yet" placeholders (chosen) | No fabricated business data on a system of record; accuracy P0 holds on every screen | Less impressive shell for demos |
+| Keep the Morgan Reyes demo shell | Shows the product vision | A real account sees fake clients and fake money — the exact stale-but-confident failure Rule 4 forbids, and two-system-trap fuel |
+| Per-account "demo mode" toggle | Both worlds | Two rendering paths to keep accurate; out of scope for a cleanup |
+
+**Rationale:** Lens is a daily-operator system of record. A page that confidently shows invented clients or dollars poisons the trust the morning sweep depends on; a page that says "not built yet" costs nothing but honesty.
+
+**Implications:**
+- `DashboardLayout` is now a server component fetching via `getPhotographer` (new `src/lib/erp/photographer/`); drawer state moved to `DashboardShell` (client).
+- `StageBar` keeps its own default stage labels (formerly `DATA.stages`).
+- The mock file cannot be re-imported — it no longer exists; new pages must ship with real reads or an honest placeholder.
+
+**Revisit Trigger:** A sales/demo need for a populated shell (build the demo-mode toggle then, never by re-adding mock imports); or LENS-020 shipping the derived sections.
+
+---
+
 ### LENS-D-029 — Lead candidates are thread-starters from unknown senders; everything else skips silently
 **Date:** 2026-08-01
 **Phase:** Phase 1 | Sprint 3 (LENS-023b)
@@ -829,6 +854,7 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-030 | Real accounts never see demo data; chrome renders the profile row; mock deleted | 2026-08-01 | UX | ✅ Active |
 | LENS-D-029 | Lead candidates: thread-starters from unknown senders; deterministic filter | 2026-08-01 | Architecture | ✅ Active |
 | LENS-D-028 | Gmail intake polls on cron, stateless (no cursor); Pub/Sub deferred | 2026-08-01 | Architecture | ✅ Active |
 | LENS-D-027 | Per-invoice chase pause keyed by comm_sequence_state.invoice_id | 2026-07-07 | Schema | ✅ Active |

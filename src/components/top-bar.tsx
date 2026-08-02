@@ -1,10 +1,10 @@
 "use client";
 
-import { Search, Sun, Bell, Settings } from "lucide-react";
+import { Search, Bell, Settings } from "lucide-react";
 import { Avatar } from "@/components/primitives";
-import { DATA } from "@/lib/mock/data";
+import type { PhotographerIdentity } from "@/components/dashboard-shell";
 
-export function TopBar() {
+export function TopBar({ identity }: { identity: PhotographerIdentity }) {
   return (
     <div
       style={{
@@ -32,10 +32,6 @@ export function TopBar() {
       </div>
       <div style={{ flex: 1 }} />
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span className="meta" style={{ color: "var(--ink-3)" }}>
-          <Sun size={12} /> Sunset{" "}
-          <span className="num" style={{ color: "var(--ink-2)", marginLeft: 4 }}>{DATA.sunset}</span>
-        </span>
         <button className="btn ghost sm" aria-label="Notifications" data-testid="notifications-btn">
           <Bell size={14} />
         </button>
@@ -43,7 +39,7 @@ export function TopBar() {
           <Settings size={14} />
         </button>
         <div style={{ width: 1, height: 20, background: "var(--rule)", margin: "0 4px" }} />
-        <Avatar name={DATA.photographer.name} size={28} color="oklch(0.48 0.08 50)" />
+        <Avatar name={identity.displayName} size={28} color="oklch(0.48 0.08 50)" />
       </div>
     </div>
   );
