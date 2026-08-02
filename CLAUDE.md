@@ -84,11 +84,11 @@ If a Claude Code question can be answered by these files, the answer is in those
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
 Current sprint:      Sprint 3 — LENS-023 COMPLETE (a/b/c merged #42/#43/#44). Phase 1 loop code-complete: inquiry → lead → qualification → inquiries surface → booking → invoice → chase. Intake inert until gmail.readonly granted on an account.
-Last ticket:         LENS-023c MERGED #44 (inquiries page real via listLeads + inquiries-view.tsx; dashboard Fresh-inquiries card real; DATA.inquiries mock deleted; honest connect/watching/paused/failed states). CRON_SECRET live; migration_006 applied prod+test; gmail.readonly on GCC consent screen.
+Last ticket:         LENS-CLEANUP-009 MERGED #45 (chrome renders real photographer profile via new erp/photographer + server DashboardLayout/DashboardShell; nine unbuilt pages show honest ComingSoon; mission-control mock sections removed pending LENS-020; src/lib/mock/data.ts DELETED — LENS-D-030). Before that: LENS-023c MERGED #44 (inquiries page real; CRON_SECRET live; migration_006 applied prod+test; gmail.readonly on GCC consent screen).
 Next ticket:         None kicked off — next is acceptance + cutover prep, then Phase 1 wrap or next spec. PENDING OWNER ACTIONS: (1) apply migration_007 to prod + test — thread_id write degrades to reported error until then; (2) reconnect Google on prod test account — all three consent boxes (intake activates only then), calendar sync unchanged, gmail scope[] includes readonly; (3) E2E chase + intake acceptance per specs (chase: real send on test account; intake: double-run zero dupes, new-sender/client-reply/spam triage, inquiries page count reconciles with lead rows exactly). Before Morgan sees the sweep: seed prod test account invoice book + hand-reconcile (accuracy release gate).
 Last migration:      migration_007_lead_thread_id.sql (in repo via #43 — NOT YET APPLIED. migration_006 applied to prod + test 2026-08-01 per owner; migration_005 applied 2026-07-07)
 Next migration:      migration_008 (none planned — 023c is UI-only)
-Last PR branch:      LENS-023c-inquiries-real (merged as #44)
+Last PR branch:      LENS-CLEANUP-009-retire-mock-data (merged as #45)
 Active feature spec: docs/features/Phase1/LENS-023_gmail-lead-intake.md (LENS-022 spec: docs/features/Phase1/LENS-022_who-owes-invoices.md)
 ```
 
