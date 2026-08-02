@@ -8,15 +8,31 @@ import {
   type InvoiceListRow,
 } from "@/lib/erp/invoice";
 import { listChaseStates, type InvoiceChaseState } from "@/lib/erp/invoice/chase";
-import { isServiceConnected } from "@/lib/integrations/oauth/status";
+import { listLeads } from "@/lib/erp/lead";
+import { isServiceConnected, isGmailReadGranted } from "@/lib/integrations/oauth/status";
 import { syncCalendarToBookings } from "@/lib/integrations/calendar/sync";
 import MissionControl from "./mission-control";
-import type { DashboardKpis, UpcomingShoot, MoneyCardData, MoneyRow } from "./mission-control";
+import type {
+  DashboardKpis,
+  UpcomingShoot,
+  MoneyCardData,
+  MoneyRow,
+  InquiriesCardData,
+} from "./mission-control";
 
 /** How far ahead the morning sweep looks. */
 const SYNC_WINDOW_DAYS = 90;
 const SHOOTS_SHOWN = 6;
 const MONEY_ROWS_SHOWN = 4;
+const INQUIRY_ROWS_SHOWN = 3;
+
+const SOURCE_LABEL: Record<string, string> = {
+  gmail_inbound: "Gmail",
+  web_form: "Website",
+  referral: "Referral",
+  social: "Social",
+  other: "Other",
+};
 
 /** Whole days from `from` to `to` (YYYY-MM-DD each). Negative = past. */
 function daysUntil(from: string, to: string): number {
@@ -145,6 +161,47 @@ export default async function MissionControlPage() {
     };
   }
 
+  // Fresh inquiries (LENS-023c) — real 'new' leads, needs-info first (the
+  // "what to ask" queue). null = read failed → explicit failed state.
+  let inquiries: InquiriesCardData | null = null;
+  const leadsResult = await listLeads(supabase);
+  if (!leadsResult.error) {
+    const readGranted = await isGmailReadGranted(supabase);
+    const { data: photographer } = await supabase
+      .from("photographer")
+      .select("timezone")
+      .single();
+    const receivedFmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: photographer?.timezone ?? "UTC",
+      month: "short",
+      day: "numeric",
+    });
+    const isNeedsInfo = (notes: string | null) =>
+      notes !== null && /Missing: /.test(notes);
+
+    const fresh = leadsResult.data
+      .filter((l) => l.qualification_status === "new")
+      .sort((a, b) => {
+        const na = isNeedsInfo(a.qualification_notes) ? 0 : 1;
+        const nb = isNeedsInfo(b.qualification_notes) ? 0 : 1;
+        if (na !== nb) return na - nb;
+        return b.received_at.localeCompare(a.received_at);
+      });
+
+    inquiries = {
+      newCount: fresh.length,
+      captureOn: readGranted.error ? false : readGranted.data,
+      rows: fresh.slice(0, INQUIRY_ROWS_SHOWN).map((l) => ({
+        id: l.id,
+        name: l.display_name,
+        sourceLabel: SOURCE_LABEL[l.source] ?? l.source,
+        preview: l.intent_summary ?? "",
+        receivedLabel: receivedFmt.format(new Date(l.received_at)),
+        needsInfo: isNeedsInfo(l.qualification_notes),
+      })),
+    };
+  }
+
   const kpis: DashboardKpis = {
     activeClients: clientCount.error ? null : clientCount.data,
     shootsThisWeek,
@@ -163,6 +220,7 @@ export default async function MissionControlPage() {
       unmatchedCount={unmatchedCount}
       syncFailed={syncFailed}
       money={money}
+      inquiries={inquiries}
     />
   );
 }

@@ -54,18 +54,8 @@ export const DATA = {
     },
   ],
 
-  inquiries: [
-    { id: "i-88", name: "Harper Owens", email: "harper.o@gmail.com", sessionType: "Senior", age: "Class of 2026", source: "Instagram", received: "22m ago", unread: true,
-      preview: "Hi Morgan! I saw your fall mini session info on IG and I'm obsessed. Do you have any openings for seniors in November? I can be flexible on dates…" },
-    { id: "i-87", name: "Rachel + James Becker", email: "rachel.becker@gmail.com", sessionType: "Family", age: null, source: "Referral — Lin family", received: "2h ago", unread: true,
-      preview: "Hi! We were referred by the Lin family. Looking to book a family session for our extended family (~12 people) around Thanksgiving if possible." },
-    { id: "i-86", name: "Dana Whitaker", email: "d.whitaker@hey.com", sessionType: "Senior", age: null, source: "Google", received: "Yesterday", unread: false,
-      preview: "Hello — my daughter Nora is a senior this year. Do you have a waitlist? We are specifically hoping for a downtown location set." },
-    { id: "i-85", name: "Sam Rourke", email: "s.rourke@outlook.com", sessionType: "Headshot", age: null, source: "Website", received: "Yesterday", unread: false,
-      preview: "Looking for executive headshots for a LinkedIn refresh. Do you offer studio-only packages?" },
-    { id: "i-84", name: "The Petrov Family", email: "petrovs@gmail.com", sessionType: "Family", age: null, source: "Instagram", received: "2d ago", unread: false,
-      preview: "We did a session with you in 2023 and want to book our annual family shoot. Any November openings?" },
-  ],
+  // inquiries: removed (LENS-023c) — the inquiries page reads real leads via
+  // listLeads; the last mock-backed surface on the primary path is gone.
 
   clientsList: [
     { id: "b-298", client: "Mia Delgado", parent: "Rosa Delgado", type: "Senior", color: "#C2704A", date: "Oct 22", payment: "warn" as const, payLabel: "Balance due", stage: 3, location: true },
