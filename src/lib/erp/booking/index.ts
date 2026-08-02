@@ -149,6 +149,22 @@ export type UpcomingBooking = Booking & {
  * Upcoming sessions for the dashboard: session_date >= from, live statuses
  * only, soonest first. RLS scopes to the photographer.
  */
+/** Bookings that entered the book since `since` — the "booked last 30d" KPI. */
+export async function countBookingsCreatedSince(
+  supabase: SupabaseClient,
+  since: string,
+): Promise<ErpResult<number>> {
+  const { count, error } = await supabase
+    .from('booking')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', since)
+    .in('status', ['tentative', 'confirmed'])
+    .is('deleted_at', null);
+
+  if (error) return { data: null, error: toErpError(error) };
+  return { data: count ?? 0, error: null };
+}
+
 export async function listUpcomingBookings(
   supabase: SupabaseClient,
   opts: { from: string; limit?: number },
