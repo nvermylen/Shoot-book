@@ -43,6 +43,7 @@ export async function GET(request: Request) {
 
   // Counts and IDs only — never sender addresses, subjects, or bodies (#11).
   const {
+    agent_unavailable,
     photographers,
     readonly_missing,
     credentials_broken,
@@ -56,8 +57,12 @@ export async function GET(request: Request) {
   if (errors.length > 0) {
     console.error('cron.gmail_lead_intake.partial_errors', { count: errors.length });
   }
+  if (agent_unavailable) {
+    console.error('cron.gmail_lead_intake.agent_unavailable');
+  }
   return NextResponse.json({
     ok: true,
+    agent_unavailable,
     photographers,
     readonly_missing,
     credentials_broken,
