@@ -9,6 +9,7 @@ import {
 } from '@/lib/integrations/gmail/client';
 import { GMAIL_READONLY_SCOPE } from '@/lib/integrations/google/oauth';
 import { runLeadAgent } from '@/lib/ai/agents/lead/run';
+import { isGatewayConfigured } from '@/lib/ai/gateway/gateway';
 
 /**
  * Gmail lead intake (LENS-023b) — the production caller LeadAgent has been
@@ -262,6 +263,13 @@ export async function runGmailLeadIntake(
 }
 
 export interface IntakeRunReport {
+  /**
+   * Gateway unconfigured (no ANTHROPIC_API_KEY) — intake fail-closed with
+   * ZERO work done. Create-then-qualify would otherwise mint lead rows the
+   * model never judged, permanently 'new' (Rule 4). Mail stays in Gmail and
+   * is picked up by the first run after the key exists.
+   */
+  agent_unavailable: boolean;
   /** Photographers with the readonly grant whose intake ran. */
   photographers: number;
   /** Gmail rows whose scope[] lacks gmail.readonly — intake off, surfaced. */
@@ -287,6 +295,7 @@ export async function runGmailLeadIntakeAll(
   supabase: SupabaseClient,
 ): Promise<ErpResult<IntakeRunReport>> {
   const report: IntakeRunReport = {
+    agent_unavailable: false,
     photographers: 0,
     readonly_missing: 0,
     credentials_broken: 0,
@@ -297,6 +306,11 @@ export async function runGmailLeadIntakeAll(
     skipped: {},
     errors: [],
   };
+
+  if (!isGatewayConfigured()) {
+    report.agent_unavailable = true;
+    return { data: report, error: null };
+  }
 
   const { data: rows, error } = await supabase
     .from('integration_credentials')
