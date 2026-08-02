@@ -183,6 +183,16 @@ function logFailure(
   });
 }
 
+/**
+ * Whether the gateway can serve calls in this environment. Callers that would
+ * otherwise create durable records around a model call (e.g. intake's
+ * create-then-qualify) should fail closed on false rather than produce
+ * records the model never judged. Eval mode replays fixtures — no key needed.
+ */
+export function isGatewayConfigured(): boolean {
+  return process.env.LENS_GATEWAY_MODE === 'eval' || !!process.env.ANTHROPIC_API_KEY;
+}
+
 let _client: Anthropic | null = null;
 
 function getClient(): Anthropic {

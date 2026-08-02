@@ -22,6 +22,7 @@ vi.mock('@/lib/integrations/gmail/client', () => ({
   getMessage: vi.fn(),
 }));
 vi.mock('@/lib/ai/agents/lead/run', () => ({ runLeadAgent: vi.fn() }));
+vi.mock('@/lib/ai/gateway/gateway', () => ({ isGatewayConfigured: vi.fn(() => true) }));
 vi.mock('@/lib/erp/comm-log', () => ({ appendCommLog: vi.fn() }));
 
 const mockedList = vi.mocked(listInboxMessageIds);
@@ -517,6 +518,20 @@ describe('runGmailLeadIntake', () => {
 // ---------------------------------------------------------------------------
 
 describe('runGmailLeadIntakeAll', () => {
+  it('fails closed with zero work when the gateway is unconfigured — no unjudged leads, mail retried later', async () => {
+    const { isGatewayConfigured } = await import('@/lib/ai/gateway/gateway');
+    vi.mocked(isGatewayConfigured).mockReturnValueOnce(false);
+    const { supabase } = mockSupabase({});
+
+    const res = await runGmailLeadIntakeAll(supabase as never);
+
+    expect(res.error).toBeNull();
+    expect(res.data?.agent_unavailable).toBe(true);
+    expect(res.data?.photographers).toBe(0);
+    expect(mockedList).not.toHaveBeenCalled();
+    expect(mockedAgent).not.toHaveBeenCalled();
+  });
+
   it('runs intake only for photographers whose scope[] includes gmail.readonly', async () => {
     mockedList.mockResolvedValue({ data: [], error: null });
     const { supabase } = mockSupabase({
