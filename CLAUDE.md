@@ -83,12 +83,12 @@ If a Claude Code question can be answered by these files, the answer is in those
 
 ```
 Current phase:       Phase 1 — Foundation (Lead → Booking → Comms loop)
-Current sprint:      Sprint 3 — IN PROGRESS (LENS-021 "who's next" live; LENS-022 COMPLETE a–e; LENS-023 a+b merged #42/#43 — intake cron live, inert until gmail.readonly granted)
-Last ticket:         LENS-023b MERGED #43 (intake runner runGmailLeadIntake/All, /api/cron/gmail-lead-intake */10, migration_007, isGmailReadGranted helper, D-028/D-029). CRON_SECRET set in Vercel 2026-08-01 (022e cron verified 401-closed). migration_006 APPLIED (prod + test, per owner 2026-08-01). gmail.readonly added to GCC consent screen.
-Next ticket:         LENS-023c (inquiries page goes real — listLeads wiring, honest connect/watching states via isGmailReadGranted; last mock-backed page on primary path). PENDING OWNER ACTIONS: (1) apply migration_007 to prod + test — thread_id write degrades to reported error until then; (2) reconnect Google on prod test account — all three consent boxes (intake activates only then), calendar sync unchanged, calendar+gmail rows, gmail scope[] includes readonly; (3) E2E chase + intake acceptance per specs (chase: real send on test account; intake: double-run zero dupes, new-sender/client-reply/spam triage). Before Morgan sees the sweep: seed prod test account invoice book + hand-reconcile (accuracy release gate).
+Current sprint:      Sprint 3 — LENS-023 COMPLETE (a/b/c merged #42/#43/#44). Phase 1 loop code-complete: inquiry → lead → qualification → inquiries surface → booking → invoice → chase. Intake inert until gmail.readonly granted on an account.
+Last ticket:         LENS-023c MERGED #44 (inquiries page real via listLeads + inquiries-view.tsx; dashboard Fresh-inquiries card real; DATA.inquiries mock deleted; honest connect/watching/paused/failed states). CRON_SECRET live; migration_006 applied prod+test; gmail.readonly on GCC consent screen.
+Next ticket:         None kicked off — next is acceptance + cutover prep, then Phase 1 wrap or next spec. PENDING OWNER ACTIONS: (1) apply migration_007 to prod + test — thread_id write degrades to reported error until then; (2) reconnect Google on prod test account — all three consent boxes (intake activates only then), calendar sync unchanged, gmail scope[] includes readonly; (3) E2E chase + intake acceptance per specs (chase: real send on test account; intake: double-run zero dupes, new-sender/client-reply/spam triage, inquiries page count reconciles with lead rows exactly). Before Morgan sees the sweep: seed prod test account invoice book + hand-reconcile (accuracy release gate).
 Last migration:      migration_007_lead_thread_id.sql (in repo via #43 — NOT YET APPLIED. migration_006 applied to prod + test 2026-08-01 per owner; migration_005 applied 2026-07-07)
 Next migration:      migration_008 (none planned — 023c is UI-only)
-Last PR branch:      LENS-023b-gmail-intake-runner (merged as #43)
+Last PR branch:      LENS-023c-inquiries-real (merged as #44)
 Active feature spec: docs/features/Phase1/LENS-023_gmail-lead-intake.md (LENS-022 spec: docs/features/Phase1/LENS-022_who-owes-invoices.md)
 ```
 
