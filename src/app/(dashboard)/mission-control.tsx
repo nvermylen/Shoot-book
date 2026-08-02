@@ -14,6 +14,26 @@ export interface DashboardKpis {
   sessionsBooked30d: number | null;
 }
 
+/** One fresh inquiry row (LENS-023c) — a real `lead`, status 'new'. */
+export interface InquiryRow {
+  /** lead id */
+  id: string;
+  name: string;
+  sourceLabel: string;
+  preview: string;
+  /** Preformatted in the photographer's timezone server-side. */
+  receivedLabel: string;
+  needsInfo: boolean;
+}
+
+export interface InquiriesCardData {
+  /** Newest 'new' leads, capped for the sweep. */
+  rows: InquiryRow[];
+  newCount: number;
+  /** gmail.readonly granted — intake is actually watching the inbox (Rule 4). */
+  captureOn: boolean;
+}
+
 /** One open invoice in the "who owes / what's late" card (LENS-022c). */
 export interface MoneyRow {
   /** invoice id */
@@ -120,6 +140,7 @@ export default function MissionControl({
   unmatchedCount = 0,
   syncFailed = false,
   money,
+  inquiries,
 }: {
   kpis: DashboardKpis;
   /** null = syncing (not yet loaded); [] = connected but nothing upcoming. */
@@ -131,6 +152,8 @@ export default function MissionControl({
   syncFailed?: boolean;
   /** "Who owes / what's late" (LENS-022c). null = read failed — explicit failed state, never fake zeros. */
   money: MoneyCardData | null;
+  /** Fresh inquiries (LENS-023c). null = read failed — explicit failed state. */
+  inquiries: InquiriesCardData | null;
 }) {
   const mc = DATA.missionControl;
   const router = useRouter();
@@ -574,43 +597,92 @@ export default function MissionControl({
           )}
         </Section>
 
-        {/* TODO: LENS-020 — Fresh Inquiries needs leads/inquiries data */}
+        {/* Fresh inquiries (LENS-023c) — real leads. Rule 4: a fabricated
+            inquiry is a false business event; every state below is derived or
+            an explicit failure. Rule 5: this section IS the notification. */}
         <Section
           eyebrow="Front desk"
           title="Fresh inquiries"
           right={
-            <button className="btn sm" onClick={() => router.push("/inquiries")}>
-              Inbox ({DATA.inquiries.filter((i) => i.unread).length} unread) →
+            <button className="btn sm" data-testid="inquiries-open" onClick={() => router.push("/inquiries")}>
+              Open Inquiries
+              {inquiries && inquiries.newCount > 0 ? ` (${inquiries.newCount} new)` : ""} →
             </button>
           }
         >
-          <div className="card">
-            {DATA.inquiries.slice(0, 3).map((i, idx) => (
-              <div
-                key={i.id}
-                className="row-hover"
-                onClick={() => router.push("/inquiries")}
-                style={{
-                  display: "grid", gridTemplateColumns: "220px 1fr 140px 80px",
-                  padding: "16px 20px", gap: 20, alignItems: "center",
-                  borderBottom: idx < 2 ? "1px solid var(--rule)" : "none", cursor: "pointer",
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: i.unread ? 600 : 450, color: "var(--ink)", display: "flex", gap: 6, alignItems: "center" }}>
-                    {i.unread && <span style={{ width: 6, height: 6, borderRadius: 999, background: "var(--accent)" }} />}
-                    {i.name}
-                  </div>
-                  <div className="meta" style={{ marginTop: 2 }}>{i.source}</div>
-                </div>
-                <div style={{ fontSize: 13, color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {i.preview}
-                </div>
-                <Pill kind="accent">{i.sessionType}</Pill>
-                <span className="meta" style={{ textAlign: "right" }}>{i.received}</span>
+          {inquiries === null ? (
+            <div className="card" data-testid="inquiries-card-failed" style={{ padding: 28 }}>
+              <span className="meta" style={{ color: "var(--warn)" }}>
+                Couldn&apos;t load inquiries this time — open the Inquiries page to check.
+              </span>
+            </div>
+          ) : !inquiries.captureOn && inquiries.rows.length === 0 ? (
+            <div className="card" data-testid="inquiries-card-connect" style={{ padding: 28, textAlign: "center" }}>
+              <div style={{ fontWeight: 500, color: "var(--ink)", marginBottom: 6 }}>
+                Connect Gmail
               </div>
-            ))}
-          </div>
+              <div className="meta" style={{ marginBottom: 16 }}>
+                New inquiry emails become leads on their own — nothing to retype.
+              </div>
+              {/* Full navigation — the connect route 307s to Google */}
+              <a className="btn sm" href="/api/integrations/google/connect" data-testid="inquiries-card-connect-btn">
+                Connect Google →
+              </a>
+            </div>
+          ) : inquiries.rows.length === 0 ? (
+            <div className="card" data-testid="inquiries-card-watching" style={{ padding: 28 }}>
+              <span className="meta">
+                No new inquiries. Watching your inbox — checked every 10 minutes.
+              </span>
+            </div>
+          ) : (
+            <div className="card" data-testid="inquiries-card-list">
+              {inquiries.rows.map((i, idx) => (
+                <div
+                  key={i.id}
+                  className="row-hover"
+                  data-testid={`inquiry-card-row-${i.id}`}
+                  onClick={() => router.push("/inquiries")}
+                  style={{
+                    display: "grid", gridTemplateColumns: "220px 1fr 120px 90px",
+                    padding: "16px 20px", gap: 20, alignItems: "center",
+                    borderBottom: idx < inquiries.rows.length - 1 ? "1px solid var(--rule)" : "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, color: "var(--ink)", display: "flex", gap: 6, alignItems: "center" }}>
+                      <span style={{ width: 6, height: 6, borderRadius: 999, background: "var(--accent)" }} />
+                      {i.name}
+                    </div>
+                    <div className="meta" style={{ marginTop: 2 }}>{i.sourceLabel}</div>
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {i.preview}
+                  </div>
+                  <div>{i.needsInfo ? <Pill kind="warn">needs info</Pill> : <Pill kind="info">new</Pill>}</div>
+                  <span className="meta" style={{ textAlign: "right" }}>{i.receivedLabel}</span>
+                </div>
+              ))}
+              {!inquiries.captureOn && (
+                <div
+                  data-testid="inquiries-card-capture-off"
+                  style={{
+                    padding: "10px 20px", borderTop: "1px solid var(--rule)",
+                    display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                  }}
+                >
+                  <span className="meta" style={{ color: "var(--warn)" }}>
+                    Inquiry capture is off — new inquiries aren&apos;t arriving on their own.
+                  </span>
+                  {/* Full navigation — the connect route 307s to Google */}
+                  <a className="btn sm" href="/api/integrations/google/connect" data-testid="inquiries-card-reconnect">
+                    Connect Gmail reading →
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
         </Section>
       </div>
     </div>
