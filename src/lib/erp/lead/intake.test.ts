@@ -77,6 +77,7 @@ function inbound(overrides?: Partial<InboundMessage>): InboundMessage {
     subject: 'Senior photos for Emma?',
     bodyText: 'Do you have August availability?',
     receivedAt: '2026-08-01T14:00:00.000Z',
+    labelIds: ['INBOX'],
     ...overrides,
   };
 }
@@ -185,6 +186,48 @@ describe('runGmailLeadIntake', () => {
       }),
       supabase,
     );
+  });
+
+  it('skips mail this account itself sent (SENT label) — the photographer is never their own lead', async () => {
+    mockedList.mockResolvedValue({ data: [{ id: 'm1', threadId: 'm1' }], error: null });
+    mockedGet.mockResolvedValue({
+      data: inbound({ labelIds: ['SENT', 'INBOX'] }),
+      error: null,
+    });
+    const { supabase } = mockSupabase(emptyBookTables());
+
+    const res = await runGmailLeadIntake(supabase as never, PHOTOGRAPHER_ID);
+
+    expect(mockedAgent).not.toHaveBeenCalled();
+    expect(res.data?.skipped.self_sender).toBe(1);
+    expect(res.data?.candidates).toBe(0);
+  });
+
+  it('a thrown lead agent stays a per-message error — the batch continues', async () => {
+    mockedList.mockResolvedValue({
+      data: [
+        { id: 'm1', threadId: 'm1' },
+        { id: 'm2', threadId: 'm2' },
+      ],
+      error: null,
+    });
+    mockedGet
+      .mockResolvedValueOnce({ data: inbound(), error: null })
+      .mockResolvedValueOnce({
+        data: inbound({ messageId: 'm2', threadId: 'm2', fromEmail: 'other@example.com' }),
+        error: null,
+      });
+    mockedAgent
+      .mockRejectedValueOnce(new Error('ANTHROPIC_API_KEY is not set'))
+      .mockResolvedValueOnce(agentSuccess());
+    const { supabase } = mockSupabase(emptyBookTables());
+
+    const res = await runGmailLeadIntake(supabase as never, PHOTOGRAPHER_ID);
+
+    expect(res.error).toBeNull();
+    expect(res.data?.errors).toHaveLength(1);
+    expect(res.data?.errors[0]).toContain('lead agent threw');
+    expect(res.data?.created).toBe(1); // m2 still processed after m1 threw
   });
 
   it('skips replies — only thread-starters are lead candidates (D3)', async () => {
