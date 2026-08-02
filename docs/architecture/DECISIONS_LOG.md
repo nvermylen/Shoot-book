@@ -13,6 +13,60 @@
 
 ---
 
+### LENS-D-029 — Lead candidates are thread-starters from unknown senders; everything else skips silently
+**Date:** 2026-08-01
+**Phase:** Phase 1 | Sprint 3 (LENS-023b)
+**Status:** ✅ Active
+
+**Decision:** The intake runner (spec D3) creates a lead only for messages that are (a) in the inbox window, (b) the first message of their thread, and (c) from a sender matching no live client and no live lead for that photographer. Everything else is skipped with a counted reason — no lead, no error. Extraction is deterministic (spec D2): the payload is built from headers; LeadAgent's qualification call is the only model involvement. Spam judgment belongs to LeadAgent (rejected → `disqualified`, kept, never deleted).
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Filter in code, judge in the agent (chosen) | Deterministic, cheap, testable; the model never fabricates a lead row | Replies from genuinely new contexts are missed until the CommsAgent ticket |
+| Send everything to LeadAgent | One decision point | Every newsletter and client reply costs a model call and can become a junk lead — fabricated business events on the primary surface (Rule 4) |
+| LLM extraction of name/intent from bodies | Richer fields | A hallucinated field in a business record; D2 forbids it — same reasoning as the chase's D3 |
+
+**Choice:** Deterministic filter, one Set-lookup dedup pre-check before any fetch, per-message failure isolation (one malformed email never stalls the batch). Deleted leads stay in the message-id dedup set (the unique index still blocks re-insert) but leave the known-sender set — a past deleted lead's sender may inquire again.
+
+**Rationale:** A fabricated or duplicated lead poisons the inquiries surface; a silently dropped one is worse (mail never vanishes in Gmail). Every skip is counted and reported; nothing is dropped without a ledgered reason.
+
+**Implications:**
+- Existing clients replying about sessions are CommsAgent territory (deferred), counted as `known_sender` skips until then.
+- `comm_log` gets its first `direction='inbound'` writer; `gmail.message_received` its first emitter — after `createLead` succeeds (write order per D5, same reasoning as LENS-D-026).
+- `lead.thread_id` (migration_007 — renumbered; the spec assumed 006, which 022e took) links the thread for the future reply join.
+
+**Revisit Trigger:** CommsAgent reply handling ships (replies get a home → the thread-start filter can route instead of skip); or a photographer reports a real inquiry pattern the filter misses (e.g., inquiries habitually arriving as replies to her newsletter).
+
+---
+
+### LENS-D-028 — Gmail intake polls on cron with no sync cursor; Pub/Sub is a deferred upgrade
+**Date:** 2026-08-01
+**Phase:** Phase 1 | Sprint 3 (LENS-023b)
+**Status:** ✅ Active
+
+**Decision:** Inbound Gmail is a `*/10` Vercel Cron polling a rolling window (`in:inbox newer_than:2d`, ≤50 messages), stateless by design (spec D1): no stored cursor, no historyId. Idempotency is structural — the `(photographer_id, source_message_id)` unique index plus a per-run dedup pre-check make reprocessing a no-op. Intake activates per photographer only when the `gmail` row's verified `scope[]` contains `gmail.readonly` (D-025 addendum); send-only grants are counted `readonly_missing`, surfaced, never silently skipped.
+
+**Options Considered:**
+| Option | Pros | Cons |
+|--------|------|------|
+| Cron poll, stateless (chosen) | Ships in one PR on 022e's cron infra; ≤10min speed-to-lead already beats hours-in-inbox; nothing to corrupt or resync | Polling cost; 10-min worst-case latency |
+| Gmail Push via Pub/Sub | Near-instant | GCP topic + push grant + endpoint verification + webhook auth — a day of console plumbing for latency the product doesn't need yet |
+| Poll with stored historyId cursor | Fetches only deltas | A corrupted/expired cursor needs gap-recovery logic; the stateless window needs none |
+
+**Choice:** Stateless cron poll. The registry's Gmail sync-rules line was amended in LENS-023a; Pub/Sub upgrades transport later without changing the pipeline behind it.
+
+**Rationale:** Speed-to-lead is a revenue behavior, but the bar to beat is "inquiry sits in Gmail until Morgan opens it." Ten minutes clears it. Statelessness converts every failure mode into "the next run picks it up."
+
+**Implications:**
+- Window (2d) ≫ poll interval (10min): an outage shorter than two days loses nothing.
+- >50 inbox messages per 2 days would truncate the window (list is unpaginated) — acceptable at design-partner volume; revisit with Pub/Sub.
+- Cron responses and app logs carry counts and IDs only; content lives in `intent_summary` and `comm_log` (#11).
+
+**Revisit Trigger:** A real speed-to-lead complaint, >1 photographer with inbox volume near the window cap, or auto-reply drafts (which make latency user-visible) — then Pub/Sub.
+
+---
+
 ### LENS-D-027 — Per-invoice chase pause keyed by comm_sequence_state.invoice_id
 **Date:** 2026-07-07
 **Phase:** Phase 1 | Sprint 3 (LENS-022e)
@@ -775,6 +829,8 @@ Copy the relevant template when adding a new entry:
 
 | # | Title | Date | Domain | Status |
 |---|-------|------|--------|--------|
+| LENS-D-029 | Lead candidates: thread-starters from unknown senders; deterministic filter | 2026-08-01 | Architecture | ✅ Active |
+| LENS-D-028 | Gmail intake polls on cron, stateless (no cursor); Pub/Sub deferred | 2026-08-01 | Architecture | ✅ Active |
 | LENS-D-027 | Per-invoice chase pause keyed by comm_sequence_state.invoice_id | 2026-07-07 | Schema | ✅ Active |
 | LENS-D-026 | Chase reminders are send-then-log | 2026-07-07 | Architecture | ✅ Active |
 | LENS-D-025 | One combined Google consent; dual-row token upsert; granted scopes verified | 2026-07-07 | Security | ✅ Active |

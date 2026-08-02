@@ -131,6 +131,8 @@ export interface Lead {
   phone: string | null;
   source: LeadSource;
   source_message_id: string | null;
+  /** Gmail thread id for gmail_inbound leads (migration_007, LENS-023b). */
+  thread_id: string | null;
   intent_summary: string | null;
   qualification_status: LeadQualificationStatus;
   qualification_notes: string | null;
