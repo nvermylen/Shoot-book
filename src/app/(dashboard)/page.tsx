@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { countClients } from "@/lib/erp/client";
-import { listUpcomingBookings } from "@/lib/erp/booking";
+import { countBookingsCreatedSince, listUpcomingBookings } from "@/lib/erp/booking";
 import {
   listInvoices,
   listUpcomingBookingsWithoutInvoice,
@@ -214,14 +214,16 @@ export default async function MissionControlPage() {
     };
   }
 
+  const bookedSince = new Date(new Date().getTime() - 30 * 24 * 3600 * 1000).toISOString();
+  const booked30d = await countBookingsCreatedSince(supabase, bookedSince);
+
   const kpis: DashboardKpis = {
     activeClients: clientCount.error ? null : clientCount.data,
     shootsThisWeek,
     // Cents. null = load failed OR no invoices entered yet — both render "—";
     // "$0" is only shown when invoices exist and all are settled (a true zero).
     outstanding: money !== null && money.hasInvoices ? money.outstandingCents : null,
-    // TODO: LENS-022 — derive from booking.created_at once bookings have volume
-    sessionsBooked30d: null,
+    sessionsBooked30d: booked30d.error ? null : booked30d.data,
   };
 
   return (

@@ -125,7 +125,7 @@ function kpiSubtitle(key: string, value: number | null): string {
     case "outstanding":
       return "open invoices";
     case "sessionsBooked30d":
-      return "vs prior period";
+      return "in the last 30 days";
     default:
       return "";
   }
