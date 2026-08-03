@@ -5,6 +5,7 @@ import { validationError } from '@/lib/erp/types';
 import { createLead, qualifyLead, findLeadBySourceMessage, updateLeadNotes } from '@/lib/erp/lead';
 import { publish } from '@/lib/events/bus';
 import { callAgent } from '@/lib/ai/gateway/gateway';
+import { extractJsonText } from '@/lib/ai/gateway/structured';
 import { LEAD_AGENT_SYSTEM_PROMPT_V1 } from './prompts/system.v1';
 import { LeadQualificationOutputSchema, type LeadQualificationOutput } from './schema';
 
@@ -99,7 +100,7 @@ export async function runLeadAgent(
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(rawText);
+    parsed = JSON.parse(extractJsonText(rawText));
   } catch {
     return {
       data: null,
