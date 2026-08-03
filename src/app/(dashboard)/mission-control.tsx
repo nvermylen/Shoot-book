@@ -22,6 +22,8 @@ export interface InquiryRow {
   /** Preformatted in the photographer's timezone server-side. */
   receivedLabel: string;
   needsInfo: boolean;
+  /** LeadAgent judged it a real inquiry — the strongest "respond now" signal. */
+  qualified: boolean;
 }
 
 export interface InquiriesCardData {
@@ -548,7 +550,15 @@ export default function MissionControl({
                   <div style={{ fontSize: 13, color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {i.preview}
                   </div>
-                  <div>{i.needsInfo ? <Pill kind="warn">needs info</Pill> : <Pill kind="info">new</Pill>}</div>
+                  <div>
+                    {i.needsInfo ? (
+                      <Pill kind="warn">needs info</Pill>
+                    ) : i.qualified ? (
+                      <Pill kind="success">qualified</Pill>
+                    ) : (
+                      <Pill kind="info">new</Pill>
+                    )}
+                  </div>
                   <span className="meta" style={{ textAlign: "right" }}>{i.receivedLabel}</span>
                 </div>
               ))}
