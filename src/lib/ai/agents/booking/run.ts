@@ -7,6 +7,7 @@ import { getClient } from '@/lib/erp/client';
 import { listPackages } from '@/lib/erp/package';
 import { createBooking } from '@/lib/erp/booking';
 import { callAgent } from '@/lib/ai/gateway/gateway';
+import { extractJsonText } from '@/lib/ai/gateway/structured';
 import { BOOKING_AGENT_SYSTEM_PROMPT_V1 } from './prompts/system.v1';
 import { BookingAgentOutputSchema, type BookingAgentOutput } from './schema';
 import type { LeadQualificationOutput } from '../lead/schema';
@@ -111,7 +112,7 @@ export async function runBookingAgent(
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(rawText);
+    parsed = JSON.parse(extractJsonText(rawText));
   } catch {
     return {
       data: null,
