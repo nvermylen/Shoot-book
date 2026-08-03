@@ -61,7 +61,12 @@ export function InquiriesView({
   gmailReadGranted: boolean;
   timezone: string;
 }) {
-  const [tab, setTab] = useState<TabKey>("new");
+  // Default to the tab with waiting work: 'new' only when something is
+  // actually unjudged (agent-outage state) — otherwise Qualified, where every
+  // judged-good inquiry lands within seconds of arriving.
+  const [tab, setTab] = useState<TabKey>(() =>
+    leads.some((l) => l.qualification_status === "new") ? "new" : "qualified",
+  );
   const [selId, setSelId] = useState<string | null>(null);
 
   // Fixed timezone (photographer's) keeps server and client renders identical.

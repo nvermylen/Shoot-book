@@ -206,8 +206,12 @@ export default async function MissionControlPage() {
     const isNeedsInfo = (notes: string | null) =>
       notes !== null && /Missing: /.test(notes);
 
+    // Fresh = awaiting the photographer's response: judged-good ('qualified')
+    // plus unjudged ('new', the agent-outage state). The agent judges at
+    // ingest, so 'new' alone is empty within seconds of every real inquiry —
+    // counting only it hid a qualified lead behind "No new inquiries".
     const fresh = leadsResult.data
-      .filter((l) => l.qualification_status === "new")
+      .filter((l) => l.qualification_status === "new" || l.qualification_status === "qualified")
       .sort((a, b) => {
         const na = isNeedsInfo(a.qualification_notes) ? 0 : 1;
         const nb = isNeedsInfo(b.qualification_notes) ? 0 : 1;
@@ -225,6 +229,7 @@ export default async function MissionControlPage() {
         preview: l.intent_summary ?? "",
         receivedLabel: receivedFmt.format(new Date(l.received_at)),
         needsInfo: isNeedsInfo(l.qualification_notes),
+        qualified: l.qualification_status === "qualified",
       })),
     };
   }
