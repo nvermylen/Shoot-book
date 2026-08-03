@@ -207,9 +207,9 @@ where photographer_id = :pid and qualification_status = 'new' and deleted_at is 
 | LENS-022 | B.2 real sends, parent-routed correctly | ✅ 2026-08-02 — 3 real Gmail sends: Ava→client, Emma/Maya→parent addresses, greeting names correct, Maya asked for the $300 balance not the $500 face |
 | LENS-022 | B.3 double-run sends nothing | ✅ 2026-08-02 — immediate rerun: sent 0, skipped already_sent_today: 3 |
 | LENS-022 | B.4 per-invoice pause honored | ✅ 2026-08-02 — UI pause on I2 → run skipped {paused: 1}, others unaffected; unpaused after |
-| LENS-023 | C.1 triage matrix exact | ◐ 2026-08-02 — spam/notification leg proven ×23 (every real junk mail disqualified-kept with sensible reasons, zero false qualifications); client-sender skip proven ×13 (known_sender) + self ×3; REMAINING: one real inquiry from a non-client address → qualified lead (owner sends) |
+| LENS-023 | C.1 triage matrix exact | ✅ 2026-08-03 — all three legs with real mail: junk disqualified-kept ×27, client-sender skipped (real yahoo send hit known_sender), and a genuine inquiry ingested → **qualified** with clean reasons, thread_id linked, inbound comm_log written. Exposed + fixed #58: qualified inquiries were invisible (surfaces filtered status='new' which instant judgment empties) |
 | LENS-023 | C.3 double-run zero dupes (Query D empty) | ✅ 2026-08-02 — local run created 23, two prod reruns created 0 (duplicates: 23, errors: 0); Query D returns zero collisions |
-| LENS-023 | C.4 counts reconcile exactly (Query E) | ✅ 2026-08-02 — Query E = 0 'new' = dashboard watching-state with no rows; re-check once the first real inquiry lands nonzero |
+| LENS-023 | C.4 counts reconcile exactly (Query E) | ✅ 2026-08-03 — zero-state exact AND nonzero exact after #58: 1 fresh (new+qualified) = card row = "(1 new)" button = Query E' |
 | LENS-023 | C.5 revoke → paused within one cycle | ☐ owner — revoke gmail.readonly in Google security settings, then watch the inquiries card flip to capture-off |
 
 **Method note (B):** the chase's 8–10am-local send window was crossed for testing
